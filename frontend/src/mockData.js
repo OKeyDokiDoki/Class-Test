@@ -1,7 +1,7 @@
 export const residentData = {
   score: 82,
   label: "青年通勤型",
-  district: "朝阳社区示范片区",
+  district: "成都社区示范片区",
   dimensions: [
     { name: "生鲜购物", value: 92 },
     { name: "医疗健康", value: 68 },
