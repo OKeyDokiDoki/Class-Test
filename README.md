@@ -52,3 +52,5 @@ mvn spring-boot:run
 - H2 本地开发配置与 Oracle 生产配置。
 
 详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+
+前端开发规范见 [docs/FRONTEND_STANDARDS.md](docs/FRONTEND_STANDARDS.md)。
