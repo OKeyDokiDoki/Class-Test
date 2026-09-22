@@ -54,3 +54,5 @@ mvn spring-boot:run
 详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 前端开发规范见 [docs/FRONTEND_STANDARDS.md](docs/FRONTEND_STANDARDS.md)。
+
+公共基础层规范见 [docs/COMMON_LAYER.md](docs/COMMON_LAYER.md)。
