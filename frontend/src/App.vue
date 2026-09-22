@@ -1,30 +1,42 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import * as echarts from "echarts";
 import {
-  Building2, CheckCircle2, ChevronRight, CircleUserRound, MapPin,
-  RefreshCw, Search, ShieldCheck, Store, UsersRound
+  CheckCircle2, ChevronRight, MapPin, RefreshCw, Search, ShieldCheck, Store, UsersRound
 } from "@lucide/vue";
 import { getCommunityOverview, getMerchantRecommendations, getResidentAssessment } from "./api";
+import {
+  BaseCard,
+  ROLE_IDS,
+  STORAGE_KEYS,
+  USER_ROLES,
+  browserStorage,
+  formatNumber,
+  useECharts,
+  useRequest
+} from "./common";
 
-const activeRole = ref("resident");
+const savedRole = browserStorage.get(STORAGE_KEYS.ACTIVE_ROLE, ROLE_IDS.RESIDENT);
+const activeRole = ref(USER_ROLES.some((role) => role.id === savedRole) ? savedRole : ROLE_IDS.RESIDENT);
 const loading = ref(true);
 const resident = ref(null);
 const merchant = ref(null);
 const community = ref(null);
 const chartEl = ref(null);
 
-const roles = [
-  { id: "resident", name: "居民端", caption: "生活圈体检", icon: CircleUserRound },
-  { id: "merchant", name: "商户端", caption: "智能选址", icon: Store },
-  { id: "community", name: "社区端", caption: "精准招商", icon: Building2 }
-];
+const roles = USER_ROLES;
 const activeTitle = computed(() => roles.find((role) => role.id === activeRole.value)?.caption);
+const { isLoading: isRefreshing, execute: requestWorkspaceData } = useRequest(async () => {
+  const [residentData, merchantData, communityData] = await Promise.all([
+    getResidentAssessment(),
+    getMerchantRecommendations(),
+    getCommunityOverview()
+  ]);
+  return { residentData, merchantData, communityData };
+});
 
-function renderChart() {
-  if (!chartEl.value || !resident.value || activeRole.value !== "resident") return;
-  const chart = echarts.init(chartEl.value);
-  chart.setOption({
+const { render: renderChart } = useECharts(chartEl, () => {
+  if (!resident.value || activeRole.value !== ROLE_IDS.RESIDENT) return null;
+  return {
     radar: {
       radius: "67%", splitNumber: 4,
       axisName: { color: "#46514c", fontSize: 12 },
@@ -40,21 +52,25 @@ function renderChart() {
       areaStyle: { color: "rgba(22, 121, 90, .22)" },
       data: [{ value: resident.value.dimensions.map((item) => item.value) }]
     }]
-  });
-}
+  };
+}, [resident, activeRole]);
 
 async function loadData() {
   loading.value = true;
-  [resident.value, merchant.value, community.value] = await Promise.all([
-    getResidentAssessment(), getMerchantRecommendations(), getCommunityOverview()
-  ]);
-  loading.value = false;
-  requestAnimationFrame(renderChart);
+  try {
+    const data = await requestWorkspaceData();
+    resident.value = data.residentData;
+    merchant.value = data.merchantData;
+    community.value = data.communityData;
+    requestAnimationFrame(renderChart);
+  } finally {
+    loading.value = false;
+  }
 }
 
 function switchRole(role) {
   activeRole.value = role;
-  requestAnimationFrame(renderChart);
+  browserStorage.set(STORAGE_KEYS.ACTIVE_ROLE, role);
 }
 
 onMounted(loadData);
@@ -83,13 +99,15 @@ onMounted(loadData);
         <div><p>城市 15 分钟便民生活圈</p><h1>{{ activeTitle }}</h1></div>
         <div class="top-actions">
           <label class="search"><Search :size="17" /><input aria-label="搜索小区或片区" placeholder="搜索小区或片区" /></label>
-          <button class="icon-button" title="刷新数据" @click="loadData"><RefreshCw :size="18" /></button>
+          <button class="icon-button" title="刷新数据" :disabled="isRefreshing" @click="loadData">
+            <RefreshCw :size="18" :class="{ spinning: isRefreshing }" />
+          </button>
         </div>
       </header>
 
       <div v-if="loading" class="loading">正在生成生活圈分析...</div>
 
-      <section v-else-if="activeRole === 'resident'" class="workspace">
+      <section v-else-if="activeRole === ROLE_IDS.RESIDENT" class="workspace">
         <div class="map-panel">
           <div class="map-toolbar">
             <div><span class="eyebrow">当前点位</span><strong>{{ resident.district }}</strong></div>
@@ -113,17 +131,17 @@ onMounted(loadData);
           <div class="chart-panel"><div ref="chartEl" class="radar-chart"></div></div>
           <div class="insight-panel"><CheckCircle2 :size="20" /><p>{{ resident.insight }}</p></div>
         </div>
-        <div class="table-panel full-width">
+        <BaseCard class="table-panel full-width">
           <div class="section-heading"><div><span class="eyebrow">设施盘点</span><h2>步行范围内服务供给</h2></div><span>演示数据</span></div>
           <div class="facility-grid">
             <div v-for="item in resident.facilities" :key="item.name" class="facility-item">
               <span>{{ item.name }}</span><strong>{{ item.count }}</strong><small>{{ item.status }}</small>
             </div>
           </div>
-        </div>
+        </BaseCard>
       </section>
 
-      <section v-else-if="activeRole === 'merchant'" class="workspace merchant-workspace">
+      <section v-else-if="activeRole === ROLE_IDS.MERCHANT" class="workspace merchant-workspace">
         <div class="intro-band full-width">
           <div><span class="eyebrow">商户画像</span><h2>{{ merchant.profile }}</h2><p>根据预算、经营偏好和风险承受能力推荐候选点位。</p></div>
           <button class="primary-button"><Store :size="17" />填写开店需求</button>
@@ -149,7 +167,7 @@ onMounted(loadData);
       <section v-else class="workspace community-workspace">
         <div class="metrics full-width">
           <div><span>生活圈覆盖率</span><strong>{{ community.coverage }}%</strong></div>
-          <div><span>辖区服务人口</span><strong>{{ community.residents.toLocaleString() }}</strong></div>
+          <div><span>辖区服务人口</span><strong>{{ formatNumber(community.residents) }}</strong></div>
           <div><span>待对接商户</span><strong>{{ community.intents }}</strong></div>
         </div>
         <div class="table-panel">

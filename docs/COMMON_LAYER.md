@@ -43,7 +43,8 @@ src/common/
 ├─ components/    # 公共组件，Base 前缀命名
 ├─ composables/   # 公共组合式函数，useXxx 命名
 ├─ utils/         # 纯函数工具 + 公共算法
-└─ constants/     # 常量与枚举
+├─ constants/     # 常量与枚举
+└─ adapters/      # 浏览器能力适配（localStorage 等有副作用的基础设施）
 ```
 
 ### 3.1 公共组件 `common/components/`
@@ -65,9 +66,10 @@ src/common/
 | `score.js` | **业务算法**：便利度五维聚合、归一化、高/中/低等级判定 |
 | `geo.js` | 步行圈半径估算、坐标距离换算（接高德前先用模拟算法） |
 | `validate.js` | 表单校验（开店意向提交：店名/业态/联系方式） |
-| `storage.js` | localStorage 封装（记住用户上次选的居民/商户/社区身份） |
+| `adapters/storage.js` | localStorage 适配（记住用户上次选的居民/商户/社区身份） |
 
 规则：utils 里的函数必须是**纯函数**——同样输入永远同样输出，不碰网络、不碰数据库、不操作 DOM。
+浏览器存储等有副作用的代码放 `adapters/`，不放 `utils/`。
 
 ### 3.4 常量 `common/constants/`
 
@@ -128,3 +130,12 @@ common/  →  禁止 import 任何业务代码
 2. 把反复出现的白色卡片抽成 `BaseCard`；
 3. 后端先建 `Result<T>` + `GlobalExceptionHandler`；
 4. 评分、聚合类业务计算迁到 `score.js` / `CalcUtils`。
+
+## 8. 当前落地清单
+
+截至 2026 年 9 月 22 日，本地开发副本已建立：
+
+- 前端：`components/`、`composables/`、`utils/`、`constants/`、`adapters/` 和统一出口 `common/index.js`。
+- 后端：`result/`、`exception/`、`utils/`。
+- 已接入：角色常量与本地记忆、请求状态、ECharts 生命周期、数字格式化、统一响应体、全局异常处理。
+- 已测试：评分、地理距离、表单校验、后端计算工具与统一响应体。

@@ -6,7 +6,7 @@ const api = axios.create({ baseURL: "/api", timeout: 2500 });
 async function withFallback(request, fallback) {
   try {
     const response = await request();
-    return response.data;
+    return response.data?.data ?? response.data;
   } catch {
     return fallback;
   }
