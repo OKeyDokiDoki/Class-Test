@@ -56,3 +56,5 @@ mvn spring-boot:run
 前端开发规范见 [docs/FRONTEND_STANDARDS.md](docs/FRONTEND_STANDARDS.md)。
 
 公共基础层规范见 [docs/COMMON_LAYER.md](docs/COMMON_LAYER.md)。
+
+数据项约定规范见 [docs/DATA_CONVENTIONS.md](docs/DATA_CONVENTIONS.md)。
