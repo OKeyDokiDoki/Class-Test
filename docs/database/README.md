@@ -20,6 +20,12 @@
 | `sql/06_views_oracle.sql` | 社区看板视图、设施类别统计视图 |
 | `sql/07_migration_v1_to_v2.sql` | 从现有 V1 `merchant_intent` 平滑升级到 V2 |
 | `sql/08_validation_report.txt` | H2 建表与初始化数据验证记录 |
+| `sql/09_persistence_verification.txt` | 物理建表与跨进程持久化验证记录 |
+| `sql/dbdiagram-export/dbml_export_oracle.sql` | **dbdiagram.io 从 DBML 导出的 Oracle 方言 DDL**（27 张表） |
+| `sql/dbdiagram-export/dbml_export_mysql.sql` | dbdiagram.io 导出的 MySQL 方言 DDL |
+| `sql/dbdiagram-export/dbml_export_postgres.sql` | dbdiagram.io 导出的 PostgreSQL 方言 DDL |
+| `sql/schema-dbml-h2.sql` | 由 dbdiagram.io 导出并做 H2 兼容处理的物理建表脚本 |
+| `tools/README.md` | 建模工具到物理建表的完整链路与复现命令 |
 | `图/` | 总体 ER、分域 ER、数据架构、数据流、存储布局图 |
 | `data-model.json` | 机器可读的完整模型（供后续代码生成/校验） |
 
@@ -54,7 +60,49 @@ java -cp h2-2.2.224.jar org.h2.tools.RunScript `
 
 验证结果：27 张表、258 个字段、41 个外键全部创建成功。
 
-## 四、设计口径
+## 四、物理建表与数据持久化（已落地）
+
+物理建表**不是手写 DDL**，而是由 dbdiagram.io 从 DBML 导出，再执行到物理数据库中：
+
+```text
+docs/database/dbml/class_test_full.dbml
+        │  dbdiagram.io 网页 Export → SQL
+        │  或 npx @dbml/cli dbml2sql ... --postgres
+        ▼
+sql/dbdiagram-export/dbml_export_postgres.sql
+        │  仅去掉 PostgreSQL 的 DEFERRABLE 子句以兼容 H2
+        ▼
+backend/src/main/resources/db/schema-dbml-h2.sql
+        │  应用首次启动自动执行
+        ▼
+物理数据库文件 backend/data/lifecircle.mv.db（27 张表、41 个外键）
+```
+
+持久化代码位于后端：
+
+- `backend/src/main/java/com/lifecircle/domain/*.java`：27 张表对应的 JPA 实体；
+- `backend/src/main/java/com/lifecircle/repository/*Repository.java`：27 个 Spring Data JPA 仓储；
+- `backend/src/main/java/com/lifecircle/config/SchemaBootstrapRunner.java`：首次启动执行 dbdiagram.io 建表脚本；
+- `backend/src/main/java/com/lifecircle/service/PersistenceDemoRunner.java`：向各表写入演示数据并输出行数；
+- `backend/src/main/resources/application-h2file.yml`：H2 文件库持久化配置（`ddl-auto=none`）。
+
+运行与持久化验证：
+
+```powershell
+# 第一次：自动建表 + 写入 27 张表的演示数据
+mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file,demo" `
+  "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
+
+# 第二次：进程重启后不写数据，只读取行数，验证数据仍在磁盘上
+mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file,demo" `
+  "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
+```
+
+实测结果：第一次启动输出 27 张表各 1 行；第二次启动输出相同行数，说明数据已持久化在 `lifecircle.mv.db` 文件中。
+
+> 当前开发机只有 Oracle Instant Client，没有 Oracle/MySQL 实例，Docker 也不可用，因此物理库使用项目已依赖的 H2 文件库；Oracle 与 MySQL 的 dbdiagram.io 导出脚本已一并保留，部署到对应数据库时可直接执行。
+
+## 五、设计口径
 
 - 结构化业务数据统一放 DWD；原始接口报文保留在 ODS；评分排名等派生结果放 ADS 快照。
 - 时间统一存 UTC，展示层按 Asia/Shanghai 转换。

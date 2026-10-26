@@ -69,6 +69,31 @@ POST /api/merchant/intents
 GET  /api/merchant/intents
 ```
 
+## 物理数据库与持久化演示
+
+物理表由 **dbdiagram.io** 从 DBML 导出的 SQL 创建，不使用手写 DDL，也不使用 Hibernate 自动建表：
+
+```text
+docs/database/dbml/class_test_full.dbml
+  → dbdiagram.io / @dbml/cli 导出 SQL
+  → backend/src/main/resources/db/schema-dbml-h2.sql
+  → 首次启动时由 SchemaBootstrapRunner 执行到 H2 文件库
+```
+
+`h2file` Profile 使用文件数据库 `backend/data/lifecircle.mv.db`，数据在进程重启后仍然存在：
+
+```powershell
+# 第一次：建 27 张表并写入演示数据
+mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file,demo" `
+  "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
+
+# 第二次：进程重启后只读回行数，验证持久化
+mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file,demo" `
+  "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
+```
+
+后端已提供 27 张表的 JPA 实体与 Repository，已有 `POST/GET /api/merchant/intents` 接口也会写入同一物理库。数据库建模工具到物理建表的完整说明见 [docs/database/tools/README.md](docs/database/tools/README.md)。
+
 ## 已包含的业务骨架
 
 - 身份选择与居民、商户画像标签。

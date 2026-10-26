@@ -18,7 +18,11 @@ public class MerchantIntentService {
 
     @Transactional
     public MerchantIntent create(String merchantName, String businessType, String contact) {
-        return repository.save(new MerchantIntent(merchantName, businessType, contact));
+        MerchantIntent intent = new MerchantIntent();
+        intent.setMerchantName(merchantName);
+        intent.setBusinessType(businessType);
+        intent.setContact(contact);
+        return repository.save(intent);
     }
 
     @Transactional(readOnly = true)

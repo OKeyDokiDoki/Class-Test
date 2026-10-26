@@ -1,0 +1,64 @@
+物理建表与数据持久化验证记录
+==============================
+
+项目：城市15分钟便民生活圈与小微开店智能助手
+日期：2026-10-27
+工具：dbdiagram.io DBML 导出 → H2 2.2.224 文件数据库
+
+一、建表来源
+DBML：docs/database/dbml/class_test_full.dbml
+导出：docs/database/sql/dbdiagram-export/dbml_export_postgres.sql
+兼容：去掉 DEFERRABLE INITIALLY IMMEDIATE 后写入
+      backend/src/main/resources/db/schema-dbml-h2.sql
+物理库：backend/data/lifecircle.mv.db
+
+二、第一次启动（创建物理表 + 写入数据）
+命令：
+  mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file,demo" ^
+    "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
+
+输出：
+  [schema] 已按 dbdiagram.io DBML 导出脚本创建物理表
+  [demo] 首次启动：已向物理数据库写入演示数据
+  [demo] 物理数据库各表行数：
+    app_user = 1
+    user_profile = 1
+    profile_tag = 1
+    user_profile_tag = 1
+    profile_dimension_weight = 1
+    district = 1
+    population_grid = 1
+    road_node = 1
+    road_segment = 1
+    facility_category = 1
+    poi_facility = 1
+    poi_change_log = 1
+    resident_assessment = 1
+    assessment_dimension = 1
+    assessment_facility_stat = 1
+    district_score_snapshot = 1
+    site_candidate = 1
+    site_score_item = 1
+    merchant_intent = 1
+    merchant_match = 1
+    community_gap = 1
+    simulation_record = 1
+    sync_batch = 1
+    data_quality_issue = 1
+    ods_poi_raw = 1
+    ods_population_raw = 1
+    ods_road_raw = 1
+
+三、第二次启动（进程重启，只读回数据）
+命令与第一次相同。
+输出：
+  [schema] 物理表已存在，跳过建表
+  [demo] 再次启动：数据库中已有数据，跳过写入
+  [demo] 物理数据库各表行数：与第一次完全一致（27 张表各 1 行）
+
+四、结论
+- 27 张物理表由 dbdiagram.io 导出的 DDL 创建，未使用 Hibernate 自动建表（ddl-auto=none）。
+- 数据写入 H2 文件库后，进程重启仍能读回，持久化成立。
+- 后端 27 个 JPA 实体与 27 个 Repository 均映射同一批物理表。
+- 说明：当前开发机只有 Oracle Instant Client，没有 Oracle/MySQL 实例，Docker 不可用，
+  因此物理库使用项目已依赖的 H2 文件库；Oracle/MySQL 的 dbdiagram.io 导出脚本已保留。

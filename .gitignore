@@ -7,3 +7,7 @@ target/
 *.iml
 *.log
 .DS_Store
+# H2 文件数据库：物理数据文件不入库
+data/
+*.mv.db
+*.trace.db
