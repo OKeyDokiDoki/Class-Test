@@ -1,6 +1,8 @@
 package com.lifecircle.api;
 
 import com.lifecircle.common.result.Result;
+import com.lifecircle.domain.MerchantIntent;
+import com.lifecircle.service.MerchantIntentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
@@ -12,6 +14,12 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 public class DemoController {
+    private final MerchantIntentService merchantIntentService;
+
+    public DemoController(MerchantIntentService merchantIntentService) {
+        this.merchantIntentService = merchantIntentService;
+    }
+
     @GetMapping("/health")
     public Result<Map<String, Object>> health() {
         return Result.ok(Map.of("status", "UP", "time", Instant.now(), "mode", "demo"));
@@ -43,8 +51,31 @@ public class DemoController {
 
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/merchant/intents")
-    public Result<Map<String, Object>> createIntent(@Valid @RequestBody MerchantIntent request) {
-        return Result.ok(Map.of("id", System.currentTimeMillis(), "status", "submitted", "merchantName", request.merchantName()));
+    public Result<Map<String, Object>> createIntent(@Valid @RequestBody MerchantIntentRequest request) {
+        MerchantIntent intent = merchantIntentService.create(
+            request.merchantName(),
+            request.businessType(),
+            request.contact()
+        );
+        return Result.ok(Map.of(
+            "id", intent.getId(),
+            "status", "submitted",
+            "merchantName", intent.getMerchantName()
+        ));
+    }
+
+    @GetMapping("/merchant/intents")
+    public Result<List<Map<String, Object>>> findIntents() {
+        List<Map<String, Object>> intents = merchantIntentService.findAll().stream()
+            .map(intent -> Map.<String, Object>of(
+                "id", intent.getId(),
+                "merchantName", intent.getMerchantName(),
+                "businessType", intent.getBusinessType(),
+                "contact", intent.getContact(),
+                "createdAt", intent.getCreatedAt()
+            ))
+            .toList();
+        return Result.ok(intents);
     }
 
     @GetMapping("/community/overview")
@@ -66,7 +97,7 @@ public class DemoController {
         return Result.ok(Map.of("beforeCoverage", 78, "afterCoverage", 86, "benefitedResidents", 2140));
     }
 
-    public record MerchantIntent(
+    public record MerchantIntentRequest(
         @NotBlank(message = "商户名称不能为空") String merchantName,
         @NotBlank(message = "经营业态不能为空") String businessType,
         @NotBlank(message = "联系方式不能为空") String contact

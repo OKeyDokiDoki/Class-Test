@@ -42,6 +42,33 @@ mvn spring-boot:run
 
 复制 `.env.example` 为 `.env`，按需填写高德地图、大模型和 Oracle 连接信息。当前版本将地图、Agent 和数据访问封装在独立模块中，后续可以逐项替换演示实现。
 
+### Oracle 读写分离
+
+`oracle` Profile 下，普通事务连接主库，只读事务连接只读库：
+
+```powershell
+$env:ORACLE_MASTER_URL="jdbc:oracle:thin:@192.168.1.101:1521/FREEPDB1"
+$env:ORACLE_MASTER_USERNAME="life_circle"
+$env:ORACLE_MASTER_PASSWORD="life_circle"
+$env:ORACLE_REPLICA_URL="jdbc:oracle:thin:@192.168.1.102:1521/FREEPDB1"
+$env:ORACLE_REPLICA_USERNAME="life_circle_readonly"
+$env:ORACLE_REPLICA_PASSWORD="life_circle_readonly"
+mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=oracle"
+```
+
+- `@Transactional` 写入主库。
+- `@Transactional(readOnly = true)` 查询只读库。
+- 未设置 `ORACLE_REPLICA_*` 时会回退到主库，便于单机开发。
+- Java 配置只负责请求路由；主从复制需在数据库侧使用 Oracle Data Guard 配置。
+- 从库存在复制延迟。写入后必须立即读取的数据应在同一个写事务内从主库读取。
+
+可以使用以下接口验证持久化：
+
+```text
+POST /api/merchant/intents
+GET  /api/merchant/intents
+```
+
 ## 已包含的业务骨架
 
 - 身份选择与居民、商户画像标签。
@@ -58,3 +85,5 @@ mvn spring-boot:run
 公共基础层规范见 [docs/COMMON_LAYER.md](docs/COMMON_LAYER.md)。
 
 数据项约定规范见 [docs/DATA_CONVENTIONS.md](docs/DATA_CONVENTIONS.md)。
+
+数据库设计（数据项、dbdiagram.io 模型、数据规划架构、建表脚本与存储规划）见 [docs/database/README.md](docs/database/README.md)。
