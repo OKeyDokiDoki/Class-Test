@@ -1,0 +1,79 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 13
+skinparam dpi 140
+skinparam nodesep 26
+skinparam ranksep 40
+skinparam ArrowColor #7F7F7F
+skinparam ArrowThickness 1.2
+hide circle
+hide empty methods
+hide empty fields
+skinparam linetype polyline
+
+package "RES · 居民生活圈评估" {
+entity "resident_assessment\n居民生活圈评估表" as resident_assessment #FFF2E5 {
+  *id : BIGINT <<PK>>
+  --
+  resident_code : VARCHAR(64)
+  district_id : BIGINT <<FK>>
+  profile_id : BIGINT <<FK>>
+  radius_m : INT
+  total_score : INT
+  assessed_at : TIMESTAMP
+}
+entity "assessment_dimension\n评估维度得分表" as assessment_dimension #FFF2E5 {
+  *id : BIGINT <<PK>>
+  --
+  assessment_id : BIGINT <<FK>>
+  dimension_code : VARCHAR(30)
+  dimension_score : INT
+  weight : DECIMAL(5,2)
+}
+entity "assessment_facility_stat\n评估设施盘点表" as assessment_facility_stat #FFF2E5 {
+  *id : BIGINT <<PK>>
+  --
+  assessment_id : BIGINT <<FK>>
+  category_id : BIGINT <<FK>>
+  facility_count : INT
+  nearest_distance_m : DECIMAL(10,2)
+  status : VARCHAR(20)
+}
+entity "district_score_snapshot\n片区评分快照表" as district_score_snapshot #FFF2E5 {
+  *id : BIGINT <<PK>>
+  --
+  district_id : BIGINT <<FK>>
+  batch_id : BIGINT <<FK>>
+  coverage_pct : INT
+  avg_score : DECIMAL(5,2)
+  rank_no : INT
+  scored_at : TIMESTAMP
+}
+}
+entity "app_user\n用户账号表（外部）" as app_user #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+entity "district\n社区片区表（外部）" as district #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+entity "user_profile\n用户画像表（外部）" as user_profile #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+entity "sync_batch\n数据同步批次表（外部）" as sync_batch #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+entity "facility_category\n设施类别字典表（外部）" as facility_category #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+app_user ||--o{ resident_assessment : "用户"
+district ||--o{ resident_assessment : "目标片区"
+user_profile ||--o{ resident_assessment : "画像版本"
+sync_batch ||--o{ resident_assessment : "数据批次"
+resident_assessment ||--o{ assessment_dimension : "评估记录"
+resident_assessment ||--o{ assessment_facility_stat : "评估记录"
+facility_category ||--o{ assessment_facility_stat : "设施类别"
+district ||--o{ district_score_snapshot : "片区"
+sync_batch ||--o{ district_score_snapshot : "数据批次"
+@enduml

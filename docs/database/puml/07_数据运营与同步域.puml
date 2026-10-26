@@ -1,0 +1,77 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 13
+skinparam dpi 140
+skinparam nodesep 26
+skinparam ranksep 40
+skinparam ArrowColor #7F7F7F
+skinparam ArrowThickness 1.2
+hide circle
+hide empty methods
+hide empty fields
+skinparam linetype polyline
+
+package "OPS · 数据运营与同步" {
+entity "sync_batch\n数据同步批次表" as sync_batch #F2F2F2 {
+  *id : BIGINT <<PK>>
+  --
+  batch_no : VARCHAR(40)
+  data_source : VARCHAR(20)
+  sync_type : VARCHAR(20)
+  started_at : TIMESTAMP
+  status : VARCHAR(20)
+}
+entity "poi_change_log\nPOI 变更日志表" as poi_change_log #F2F2F2 {
+  *id : BIGINT <<PK>>
+  --
+  poi_id : BIGINT <<FK>>
+  batch_id : BIGINT <<FK>>
+  change_type : VARCHAR(20)
+  changed_at : TIMESTAMP
+}
+entity "data_quality_issue\n数据质量问题表" as data_quality_issue #F2F2F2 {
+  *id : BIGINT <<PK>>
+  --
+  batch_id : BIGINT <<FK>>
+  rule_code : VARCHAR(40)
+  severity : VARCHAR(20)
+  is_handled : CHAR(1)
+}
+entity "ods_poi_raw\nPOI 原始数据表" as ods_poi_raw #F2F2F2 {
+  *id : BIGINT <<PK>>
+  --
+  batch_id : BIGINT <<FK>>
+  source : VARCHAR(20)
+  source_poi_id : VARCHAR(100)
+  poi_name : VARCHAR(200)
+  process_status : VARCHAR(20)
+}
+entity "ods_population_raw\n人口栅格原始数据表" as ods_population_raw #F2F2F2 {
+  *id : BIGINT <<PK>>
+  --
+  batch_id : BIGINT <<FK>>
+  grid_code : VARCHAR(40)
+  population : INT
+  data_date : DATE
+}
+entity "ods_road_raw\n路网原始数据表" as ods_road_raw #F2F2F2 {
+  *id : BIGINT <<PK>>
+  --
+  batch_id : BIGINT <<FK>>
+  segment_code : VARCHAR(50)
+  process_status : VARCHAR(20)
+}
+}
+entity "poi_facility\n设施网点 POI 表（外部）" as poi_facility #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+poi_facility ||--o{ poi_change_log : "设施"
+sync_batch ||--o{ poi_change_log : "同步批次"
+sync_batch ||--o{ data_quality_issue : "同步批次"
+poi_facility ||--o{ data_quality_issue : "设施"
+sync_batch ||--o{ ods_poi_raw : "同步批次"
+sync_batch ||--o{ ods_population_raw : "同步批次"
+sync_batch ||--o{ ods_road_raw : "同步批次"
+@enduml

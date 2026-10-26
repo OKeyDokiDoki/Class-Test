@@ -1,0 +1,60 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 13
+skinparam dpi 140
+skinparam nodesep 26
+skinparam ranksep 40
+skinparam ArrowColor #7F7F7F
+skinparam ArrowThickness 1.2
+hide circle
+hide empty methods
+hide empty fields
+skinparam linetype polyline
+
+package "USR · 用户与画像" {
+entity "app_user\n用户账号表" as app_user #E8F0FB {
+  *id : BIGINT <<PK>>
+  --
+  user_code : VARCHAR(64)
+  role_code : VARCHAR(20)
+  status : VARCHAR(20)
+}
+entity "user_profile\n用户画像表" as user_profile #E8F0FB {
+  *id : BIGINT <<PK>>
+  --
+  user_id : BIGINT <<FK>>
+  profile_type : VARCHAR(20)
+  profile_label : VARCHAR(50)
+  version_no : INT
+  is_current : CHAR(1)
+}
+entity "profile_tag\n画像标签字典表" as profile_tag #E8F0FB {
+  *id : BIGINT <<PK>>
+  --
+  tag_code : VARCHAR(40)
+  tag_name : VARCHAR(50)
+  dimension_code : VARCHAR(30)
+  default_weight : DECIMAL(5,2)
+}
+entity "user_profile_tag\n用户画像标签明细表" as user_profile_tag #E8F0FB {
+  *id : BIGINT <<PK>>
+  --
+  profile_id : BIGINT <<FK>>
+  tag_id : BIGINT <<FK>>
+  weight : DECIMAL(5,2)
+}
+entity "profile_dimension_weight\n画像维度权重表" as profile_dimension_weight #E8F0FB {
+  *id : BIGINT <<PK>>
+  --
+  profile_id : BIGINT <<FK>>
+  dimension_code : VARCHAR(30)
+  weight : DECIMAL(5,2)
+}
+}
+app_user ||--o{ user_profile : "用户"
+user_profile ||--o{ user_profile_tag : "画像"
+profile_tag ||--o{ user_profile_tag : "标签"
+user_profile ||--o{ profile_dimension_weight : "画像"
+@enduml

@@ -1,0 +1,77 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 13
+skinparam dpi 140
+skinparam nodesep 26
+skinparam ranksep 40
+skinparam ArrowColor #7F7F7F
+skinparam ArrowThickness 1.2
+hide circle
+hide empty methods
+hide empty fields
+skinparam linetype polyline
+
+package "SIT · 空间与设施" {
+entity "district\n社区片区表" as district #EAF4EA {
+  *id : BIGINT <<PK>>
+  --
+  district_code : VARCHAR(40)
+  district_name : VARCHAR(100)
+  parent_id : BIGINT <<FK>>
+  district_level : VARCHAR(20)
+  resident_count : INT
+}
+entity "population_grid\n人口栅格表" as population_grid #EAF4EA {
+  *id : BIGINT <<PK>>
+  --
+  district_id : BIGINT <<FK>>
+  grid_code : VARCHAR(40)
+  population : INT
+  density : DECIMAL(12,2)
+  data_date : DATE
+}
+entity "road_node\n路网节点表" as road_node #EAF4EA {
+  *id : BIGINT <<PK>>
+  --
+  node_code : VARCHAR(40)
+  district_id : BIGINT <<FK>>
+  lng : DECIMAL(10,6)
+  lat : DECIMAL(10,6)
+}
+entity "road_segment\n路网步行段表" as road_segment #EAF4EA {
+  *id : BIGINT <<PK>>
+  --
+  segment_code : VARCHAR(50)
+  from_node_id : BIGINT <<FK>>
+  to_node_id : BIGINT <<FK>>
+  length_m : DECIMAL(10,2)
+  walk_time_s : INT
+}
+entity "facility_category\n设施类别字典表" as facility_category #EAF4EA {
+  *id : BIGINT <<PK>>
+  --
+  category_code : VARCHAR(40)
+  category_name : VARCHAR(50)
+  dimension_code : VARCHAR(30)
+}
+entity "poi_facility\n设施网点 POI 表" as poi_facility #EAF4EA {
+  *id : BIGINT <<PK>>
+  --
+  district_id : BIGINT <<FK>>
+  category_id : BIGINT <<FK>>
+  poi_name : VARCHAR(200)
+  lng : DECIMAL(10,6)
+  lat : DECIMAL(10,6)
+  business_status : VARCHAR(20)
+}
+}
+district ||--o{ population_grid : "所属片区"
+district ||--o{ road_node : "所属片区"
+district ||--o{ road_segment : "所属片区"
+road_node ||--o{ road_segment : "起点节点"
+road_node ||--o{ road_segment : "终点节点"
+district ||--o{ poi_facility : "所属片区"
+facility_category ||--o{ poi_facility : "设施类别"
+@enduml

@@ -1,0 +1,73 @@
+// 城市15分钟便民生活圈与小微开店智能助手 · 数据库逻辑模型
+// 版本：V2.0  生成日期：2026年10月
+// 使用方式：打开 https://dbdiagram.io/d ，清空编辑器后粘贴本文件内容即可复现。
+// 表分组与主题域：USR 用户画像 / SIT 空间设施 / RES 居民评估 / MER 商户招商 / COM 社区治理 / OPS 数据运营
+
+// 当前分组：社区治理
+
+Table community_gap {
+  id bigint [pk, increment, note: '主键']
+  district_id bigint [not null, note: '片区']
+  category_id bigint [not null, note: '设施类别']
+  area_name varchar(100) [not null, note: '短板区域名称']
+  issue varchar(200) [not null, note: '如“夜间就医距离较远”']
+  gap_level varchar(10) [not null, note: '高/中/低，与前端枚举一致']
+  uncovered_residents int [note: '人']
+  priority_no int [note: '1 为最高']
+  batch_id bigint [note: '数据批次']
+  created_at timestamp [not null, note: '创建时间']
+
+  Note: '社区短板片区表：社区识别出的买菜难、就医远、托育不足等短板，含缺口等级、未覆盖人口与优先级。'
+
+  indexes {
+    (district_id, gap_level) [name: 'idx_gap_district_level']
+    category_id [name: 'idx_gap_category']
+    batch_id [name: 'idx_gap_batch']
+  }
+}
+
+Table simulation_record {
+  id bigint [pk, increment, note: '主键']
+  district_id bigint [not null, note: '片区']
+  category_id bigint [not null, note: '设施类别']
+  business_type varchar(100) [note: '模拟业态']
+  lng decimal(10,6) [note: '模拟点经度']
+  lat decimal(10,6) [note: '模拟点纬度']
+  before_coverage int [not null, note: '%']
+  after_coverage int [not null, note: '%']
+  benefited_residents int [not null, note: '受益人口']
+  operator varchar(50) [note: '社区工作人员编号']
+  simulated_at timestamp [not null, note: '模拟时间']
+
+  Note: '网点增设模拟记录表：社区在地图上模拟新增便民网点后的覆盖率、受益人口和前后对比，支撑改造决策。'
+
+  indexes {
+    (district_id, simulated_at) [name: 'idx_sim_district_time']
+  }
+}
+
+// 外部引用实体（仅保留主键）
+Table district {
+  id bigint [pk]
+}
+
+Table facility_category {
+  id bigint [pk]
+}
+
+Table sync_batch {
+  id bigint [pk]
+}
+
+
+// ===== 关系定义（含外部引用） =====
+Ref: community_gap.district_id > district.id
+Ref: community_gap.category_id > facility_category.id
+Ref: community_gap.batch_id > sync_batch.id
+Ref: simulation_record.district_id > district.id
+Ref: simulation_record.category_id > facility_category.id
+
+TableGroup "社区治理" {
+  community_gap
+  simulation_record
+}

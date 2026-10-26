@@ -1,0 +1,26 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 13
+skinparam dpi 150
+skinparam ArrowColor #5B6B7F
+skinparam linetype ortho
+hide stereotype
+
+rectangle "**TBS_LIFECIRCLE_DATA**\n业务数据  1G → 6G\n用户画像 5 表\n空间设施 6 表\n居民评估 4 表\n商户招商 4 表\n社区治理 2 表" as data #EAF4EA
+rectangle "**TBS_LIFECIRCLE_IDX**\n索引  512M → 3G\n主键 / 唯一约束索引\n业务查询 B-tree 索引\n独立存放，便于重建" as idx #EEF4FB
+rectangle "**TBS_LIFECIRCLE_LOB**\n大对象  512M → 3G\nGeoJSON 边界\nJSON 变更快照\nCLOB 原始报文" as lob #FFF8E8
+rectangle "**TBS_LIFECIRCLE_ODS**\n原始层  1G → 4G\nods_poi_raw（月分区）\nods_population_raw（月分区）\nods_road_raw（月分区）\npoi_change_log（月分区）" as ods #F7F9FC
+
+data -[hidden]right-> idx
+data -[hidden]down-> lob
+idx -[hidden]down-> ods
+
+note bottom of ods
+  **保护与归档**
+  RMAN 每周全备 + 每日增量，归档日志保留 30 天
+  ODS 分区在线 6 个月，转归档表空间 / 导出后清理
+  表空间按 2 倍增长预留，监控阈值 80%
+end note
+@enduml

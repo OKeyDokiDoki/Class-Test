@@ -1,0 +1,153 @@
+// 城市15分钟便民生活圈与小微开店智能助手 · 数据库逻辑模型
+// 版本：V2.0  生成日期：2026年10月
+// 使用方式：打开 https://dbdiagram.io/d ，清空编辑器后粘贴本文件内容即可复现。
+// 表分组与主题域：USR 用户画像 / SIT 空间设施 / RES 居民评估 / MER 商户招商 / COM 社区治理 / OPS 数据运营
+
+// 当前分组：空间与设施
+
+Table district {
+  id bigint [pk, increment, note: '主键']
+  district_code varchar(40) [not null, unique, note: '行政区划码+序号，全局唯一']
+  district_name varchar(100) [not null, note: '片区名称']
+  parent_id bigint [note: '自关联，街道→社区→网格']
+  district_level varchar(20) [not null, note: 'STREET/COMMUNITY/GRID']
+  city_code varchar(20) [not null, note: 'GB/T 2260 六位代码']
+  center_lng decimal(10,6) [note: 'WGS84，单位度']
+  center_lat decimal(10,6) [note: 'WGS84，单位度']
+  boundary_geojson text [note: '片区边界，GeoJSON Polygon']
+  area_sqm decimal(12,2) [note: '平方米']
+  resident_count int [note: '人']
+  status varchar(20) [not null, default: 'ACTIVE', note: '状态']
+  created_at timestamp [not null, note: '创建时间']
+  updated_at timestamp [not null, note: '更新时间']
+
+  Note: '社区片区表：街道—社区—网格三级空间主数据，是设施、评估、选址和治理的公共维度。'
+
+  indexes {
+    parent_id [name: 'idx_district_parent']
+    (city_code, district_level) [name: 'idx_district_city']
+  }
+}
+
+Table population_grid {
+  id bigint [pk, increment, note: '主键']
+  district_id bigint [not null, note: '所属片区']
+  grid_code varchar(40) [not null, note: '统一栅格编码']
+  grid_level varchar(20) [not null, default: 'GRID_250M', note: '栅格精度']
+  center_lng decimal(10,6) [not null, note: '栅格中心经度']
+  center_lat decimal(10,6) [not null, note: '栅格中心纬度']
+  population int [not null, note: '人']
+  density decimal(12,2) [note: '人/平方公里']
+  data_date date [not null, note: '人口数据口径日期']
+  source varchar(20) [not null, default: 'GOV', note: '数据来源']
+  created_at timestamp [not null, note: '入库时间']
+
+  Note: '人口栅格表：按栅格与统计日期保存常住人口和密度，是商户选址人口指数与社区覆盖测算的输入。'
+
+  indexes {
+    (grid_code, data_date) [unique, name: 'uk_pop_grid_date']
+    (district_id, data_date) [name: 'idx_pop_district_date']
+  }
+}
+
+Table road_node {
+  id bigint [pk, increment, note: '主键']
+  node_code varchar(40) [not null, unique, note: '节点编码']
+  district_id bigint [note: '所属片区']
+  lng decimal(10,6) [not null, note: '经度']
+  lat decimal(10,6) [not null, note: '纬度']
+  node_type varchar(20) [not null, default: 'INTERSECTION', note: '节点类型']
+  updated_at timestamp [not null, note: '更新时间']
+
+  Note: '路网节点表：步行路网拓扑节点（路口、小区出入口、过街设施），用于 15 分钟步行可达计算。'
+
+  indexes {
+    district_id [name: 'idx_road_node_district']
+  }
+}
+
+Table road_segment {
+  id bigint [pk, increment, note: '主键']
+  segment_code varchar(50) [not null, unique, note: '路段编码']
+  district_id bigint [note: '所属片区']
+  from_node_id bigint [not null, note: '起点节点']
+  to_node_id bigint [not null, note: '终点节点']
+  road_name varchar(100) [note: '道路名称']
+  road_level varchar(20) [not null, default: 'BRANCH', note: '道路等级']
+  length_m decimal(10,2) [not null, note: '米']
+  walk_time_s int [not null, note: '秒，按 1.2 m/s 及过街等待估算']
+  is_walkable char(1) [not null, default: 'Y', note: '是否可步行']
+  updated_at timestamp [not null, note: '更新时间']
+
+  Note: '路网步行段表：连接两个路网节点的步行段，保存长度与步行耗时，构成 15 分钟等时圈的图结构。'
+
+  indexes {
+    from_node_id [name: 'idx_road_seg_from']
+    to_node_id [name: 'idx_road_seg_to']
+    district_id [name: 'idx_road_seg_district']
+  }
+}
+
+Table facility_category {
+  id bigint [pk, increment, note: '主键']
+  category_code varchar(40) [not null, unique, note: '如 FRESH_MARKET、CLINIC']
+  category_name varchar(50) [not null, note: '如“社区诊所”']
+  dimension_code varchar(30) [not null, note: 'FRESH/MEDICAL/EDU/TRAFFIC/NIGHT']
+  dimension_name varchar(50) [not null, note: '评分维度名称']
+  icon varchar(100) [note: '前端图标名']
+  sort_no int [not null, default: 0, note: '排序号']
+  status varchar(20) [not null, default: 'ACTIVE', note: '状态']
+  created_at timestamp [not null, note: '创建时间']
+
+  Note: '设施类别字典表：POI 类别与五维评分的映射字典，统一高德分类与业务维度，避免代码硬编码。'
+
+  indexes {
+    (dimension_code, sort_no) [name: 'idx_fac_category_dim']
+  }
+}
+
+Table poi_facility {
+  id bigint [pk, increment, note: '主键']
+  district_id bigint [not null, note: '所属片区']
+  category_id bigint [not null, note: '设施类别']
+  poi_name varchar(200) [not null, note: '设施名称']
+  lng decimal(10,6) [not null, note: '经度']
+  lat decimal(10,6) [not null, note: '纬度']
+  address varchar(255) [note: '详细地址']
+  business_status varchar(20) [not null, default: 'OPEN', note: '营业状态']
+  source varchar(20) [not null, note: '数据来源']
+  source_poi_id varchar(100) [not null, note: '高德 POI ID 或政务数据主键，用于增量去重']
+  telephone varchar(50) [note: '仅公共设施公开电话，不含个人信息']
+  first_seen_at timestamp [not null, note: '首次发现时间']
+  last_seen_at timestamp [not null, note: '最近发现时间']
+  updated_at timestamp [not null, note: '更新时间']
+  is_valid char(1) [not null, default: 'Y', note: '是否有效']
+
+  Note: '设施网点 POI 表：社区周边生鲜、医疗、教育、交通、夜间服务等设施网点，是评估与选址的主数据。'
+
+  indexes {
+    (source, source_poi_id) [unique, name: 'uk_poi_source']
+    (district_id, category_id) [name: 'idx_poi_district_cat']
+    (category_id, is_valid) [name: 'idx_poi_category']
+    poi_name [name: 'idx_poi_name']
+  }
+}
+
+// ===== 关系定义（含外部引用） =====
+Ref: district.parent_id > district.id
+Ref: population_grid.district_id > district.id
+Ref: road_node.district_id > district.id
+Ref: road_segment.district_id > district.id
+Ref: road_segment.from_node_id > road_node.id
+Ref: road_segment.to_node_id > road_node.id
+Ref: poi_facility.district_id > district.id
+Ref: poi_facility.category_id > facility_category.id
+
+TableGroup "空间与设施" {
+  district
+  population_grid
+  road_node
+  road_segment
+  facility_category
+  poi_facility
+}

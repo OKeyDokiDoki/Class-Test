@@ -1,0 +1,63 @@
+# 数据库设计交付包
+
+**项目**：城市15分钟便民生活圈与小微开店智能助手  
+**版本**：V2.0　**日期**：2026年10月
+
+## 一、文件清单
+
+| 文件 | 说明 |
+| --- | --- |
+| `数据库设计说明书.docx` | 完整设计文档：数据项、数据模型、数据规划架构、表结构、存储规划、建表脚本 |
+| `数据字典与数据项清单.xlsx` | 自动生成的数据项清单、表清单、字段字典、码表、索引约束、存储规划、容量汇总 |
+| `dbml/class_test_full.dbml` | **dbdiagram.io 建模源文件**，复制粘贴到 https://dbdiagram.io/d 即可复现完整 ER 图 |
+| `dbml/class_test_<域>.dbml` | 按主题域拆分的 DBML，便于单独查看 |
+| `sql/01_tablespace_oracle.sql` | Oracle 表空间规划（DBA 执行） |
+| `sql/02_schema_oracle.sql` | Oracle 23ai 生产建表脚本（27 张表） |
+| `sql/03_schema_h2.sql` | H2 开发库建表脚本，已实际执行验证 |
+| `sql/04_schema_mysql.sql` | MySQL 8.0 方言建表脚本（可选） |
+| `sql/05_seed_data.sql` | 设施类别、画像标签、演示片区/POI 初始化数据（Oracle） |
+| `sql/05_seed_data_h2.sql` | 同一份初始化数据的 H2 版本，已执行验证 |
+| `sql/06_views_oracle.sql` | 社区看板视图、设施类别统计视图 |
+| `sql/07_migration_v1_to_v2.sql` | 从现有 V1 `merchant_intent` 平滑升级到 V2 |
+| `sql/08_validation_report.txt` | H2 建表与初始化数据验证记录 |
+| `图/` | 总体 ER、分域 ER、数据架构、数据流、存储布局图 |
+| `data-model.json` | 机器可读的完整模型（供后续代码生成/校验） |
+
+## 二、dbdiagram.io 复现步骤
+
+1. 打开 <https://dbdiagram.io/d>。
+2. 清空左侧默认示例，粘贴 `dbml/class_test_full.dbml` 的全部内容。
+3. 右侧自动生成 ER 图；使用右上角 **Export → PNG/PDF** 可导出图片。
+4. 表分组（TableGroup）对应六个主题域；关系线由 `Ref` 定义。
+5. 修改字段时先改 DBML，再同步 `sql/` 与 Excel，保持三处一致。
+
+## 三、建表验证
+
+Oracle 脚本按外键依赖拓扑排序，执行顺序：
+
+```sql
+-- DBA
+@01_tablespace_oracle.sql
+-- 业务用户 life_circle
+@02_schema_oracle.sql
+@05_seed_data.sql
+@06_views_oracle.sql
+```
+
+H2 开发库验证命令：
+
+```powershell
+java -cp h2-2.2.224.jar org.h2.tools.RunScript `
+  -url "jdbc:h2:mem:lifecircle;MODE=Oracle;DB_CLOSE_DELAY=-1" `
+  -user sa -script sql/03_schema_h2.sql
+```
+
+验证结果：27 张表、258 个字段、41 个外键全部创建成功。
+
+## 四、设计口径
+
+- 结构化业务数据统一放 DWD；原始接口报文保留在 ODS；评分排名等派生结果放 ADS 快照。
+- 时间统一存 UTC，展示层按 Asia/Shanghai 转换。
+- 手机号只存 SHA-256 哈希；商户联系方式 AES-256-GCM 加密后 Base64 存储，列表用脱敏字段。
+- 枚举值中文与前端 `docs/DATA_CONVENTIONS.md` 逐字一致；英文状态码用于内部流转。
+- 大表按时间分区，ODS 按月分区并压缩；索引与数据分表空间存放。

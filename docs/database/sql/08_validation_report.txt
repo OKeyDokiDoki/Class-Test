@@ -1,0 +1,36 @@
+数据库建表验证报告
+====================
+项目：城市15分钟便民生活圈与小微开店智能助手
+版本：V2.0
+验证日期：2026-10-26
+验证环境：H2 2.2.224（MODE=Oracle，文件库）
+
+一、建表验证
+执行脚本：03_schema_h2.sql
+结果：成功，无 SQL 异常，退出码 0。
+
+SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES
+ WHERE TABLE_SCHEMA='PUBLIC' AND TABLE_TYPE='BASE TABLE';
+结果：27
+
+SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+ WHERE CONSTRAINT_TYPE='FOREIGN KEY';
+结果：41
+
+SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+ WHERE CONSTRAINT_TYPE='CHECK';
+结果：83
+
+普通索引：38 个（另有 9 个复合唯一约束由约束自动建索引）
+字段总数：258
+
+二、初始化数据验证
+执行脚本：03_schema_h2.sql + 05_seed_data_h2.sql
+结果：成功。
+设施类别 13 条，画像标签 8 条，片区 3 条，同步批次 1 条，POI 6 条。
+
+三、说明
+1. Oracle 脚本的表空间、分区、SecureFiles、IDENTITY 语法按 Oracle 23ai 文档编写，
+   当前环境没有可用 Oracle 实例，未在真实 Oracle 上执行；上线前须在目标库复核。
+2. MySQL 脚本为可选方言，已完成语法审查，未在真实 MySQL 实例执行。
+3. H2 开发库为内存/文件库，生产持久化以 Oracle 为准。

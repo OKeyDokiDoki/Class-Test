@@ -1,0 +1,24 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 12
+skinparam dpi 140
+skinparam activityShape roundedBox
+
+start
+:业务调研与接口字段盘点;
+:数据项识别与编码（DI-域-序号）;
+:概念模型 / 主题域划分;
+:编写 DBML（表、字段、Ref、TableGroup）;
+:导入 dbdiagram.io 生成 ER 图;
+if (模型评审通过？) then (否)
+  :修订字段、关系与约束;
+else (是)
+  :导出 Oracle / MySQL / H2 DDL;
+  :执行建表与约束验证;
+  :同步数据字典与设计说明书;
+  :纳入版本管理（Git）;
+endif
+stop
+@enduml

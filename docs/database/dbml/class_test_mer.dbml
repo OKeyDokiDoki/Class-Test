@@ -1,0 +1,121 @@
+// 城市15分钟便民生活圈与小微开店智能助手 · 数据库逻辑模型
+// 版本：V2.0  生成日期：2026年10月
+// 使用方式：打开 https://dbdiagram.io/d ，清空编辑器后粘贴本文件内容即可复现。
+// 表分组与主题域：USR 用户画像 / SIT 空间设施 / RES 居民评估 / MER 商户招商 / COM 社区治理 / OPS 数据运营
+
+// 当前分组：商户选址与招商
+
+Table site_candidate {
+  id bigint [pk, increment, note: '主键']
+  district_id bigint [not null, note: '所属片区']
+  batch_id bigint [note: '数据批次']
+  candidate_name varchar(100) [not null, note: '如“东园路口”']
+  business_type varchar(100) [note: '早餐、便利店、托育、药店等']
+  lng decimal(10,6) [note: '经度']
+  lat decimal(10,6) [note: '纬度']
+  population_index decimal(10,2) [note: '候选项半径内人口/密度综合指数']
+  competitor_count int [note: '候选点 15 分钟范围内同业态 POI 数']
+  demand_level varchar(10) [note: '高/中高/中/低']
+  competition_level varchar(10) [note: '低/中/高']
+  rent_min decimal(8,2) [note: '万元/年']
+  rent_max decimal(8,2) [note: '万元/年']
+  site_score int [note: '选址评分']
+  created_at timestamp [not null, note: '生成时间']
+
+  Note: '商户选址候选点表：Agent 依据人口栅格与同业态竞争 POI 推演出的候选点位，含评分与关键指标。'
+
+  indexes {
+    (district_id, business_type, site_score) [name: 'idx_site_district_type']
+    batch_id [name: 'idx_site_batch']
+  }
+}
+
+Table site_score_item {
+  id bigint [pk, increment, note: '主键']
+  candidate_id bigint [not null, note: '候选点']
+  score_item varchar(50) [not null, note: '人口密度/竞争饱和度/租金/交通/设施缺口']
+  item_score decimal(5,2) [not null, note: '得分']
+  weight decimal(5,2) [not null, note: '权重']
+  reason varchar(255) [note: '给商户看的解释文本']
+
+  Note: '选址评分明细表：候选点各评分项的分值、权重与理由，保证选址推荐可解释、可复核。'
+
+  indexes {
+    (candidate_id, score_item) [unique, name: 'uk_site_score_item']
+  }
+}
+
+Table merchant_intent {
+  id bigint [pk, increment, note: '主键']
+  merchant_name varchar(100) [not null, note: '商户名称']
+  business_type varchar(100) [not null, note: '经营业态']
+  contact varchar(200) [not null, note: 'AES-256-GCM 加密后 Base64，禁止明文落库；接口层解密']
+  contact_masked varchar(20) [note: '如 138****8000，列表展示用']
+  district_id bigint [note: '意向片区']
+  candidate_id bigint [note: '意向候选点']
+  budget_min decimal(8,2) [note: '万元']
+  budget_max decimal(8,2) [note: '万元']
+  area_sqm decimal(8,2) [note: '平方米']
+  remark varchar(500) [note: '经营说明']
+  status varchar(20) [not null, default: 'SUBMITTED', note: '意向状态']
+  created_at timestamp [not null, note: '创建时间']
+  updated_at timestamp [not null, note: '更新时间']
+
+  Note: '商户开店意向表：商户提交的开店意向，保留原有字段并扩展片区、候选点、预算和状态，兼容现有接口。'
+
+  indexes {
+    (status, created_at) [name: 'idx_intent_status_time']
+    district_id [name: 'idx_intent_district']
+    candidate_id [name: 'idx_intent_candidate']
+  }
+}
+
+Table merchant_match {
+  id bigint [pk, increment, note: '主键']
+  intent_id bigint [not null, note: '开店意向']
+  district_id bigint [not null, note: '片区']
+  gap_id bigint [note: '对应短板']
+  fit_score int [not null, note: '匹配度']
+  match_reason varchar(500) [note: '匹配理由']
+  status varchar(20) [not null, default: 'PENDING', note: '对接状态']
+  matched_at timestamp [not null, note: '匹配时间']
+
+  Note: '招商匹配表：社区短板与商户意向的双向匹配结果，记录匹配分、理由和对接状态。'
+
+  indexes {
+    intent_id [name: 'idx_match_intent']
+    gap_id [name: 'idx_match_gap']
+    (district_id, fit_score) [name: 'idx_match_district_score']
+  }
+}
+
+// 外部引用实体（仅保留主键）
+Table community_gap {
+  id bigint [pk]
+}
+
+Table district {
+  id bigint [pk]
+}
+
+Table sync_batch {
+  id bigint [pk]
+}
+
+
+// ===== 关系定义（含外部引用） =====
+Ref: site_candidate.district_id > district.id
+Ref: site_candidate.batch_id > sync_batch.id
+Ref: site_score_item.candidate_id > site_candidate.id
+Ref: merchant_intent.district_id > district.id
+Ref: merchant_intent.candidate_id > site_candidate.id
+Ref: merchant_match.intent_id > merchant_intent.id
+Ref: merchant_match.district_id > district.id
+Ref: merchant_match.gap_id > community_gap.id
+
+TableGroup "商户选址与招商" {
+  site_candidate
+  site_score_item
+  merchant_intent
+  merchant_match
+}

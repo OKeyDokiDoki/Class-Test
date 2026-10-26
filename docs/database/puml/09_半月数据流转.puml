@@ -1,0 +1,31 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 12
+skinparam dpi 140
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "调度器" as job
+participant "高德 / 政务接口" as src
+participant "ODS 原始层" as ods
+participant "质量校验" as dq
+participant "DWD 明细层" as dwd
+participant "ADS 快照 / 缓存" as ads
+participant "社区 / 居民 / 商户工作台" as ui
+
+job -> src : 每半月增量拉取
+src --> job : 原始报文
+job -> ods : 写批次与原始表
+ods -> dq : 质量校验
+dq -> dq : 记录质量问题
+dq -> dwd : 清洗合并入仓
+dwd -> dwd : 记录 POI 差异
+dwd -> ads : 重算片区快照
+ads -> ads : 刷新评分缓存
+ui -> ads : 查询评分排名
+ads --> ui : 看板数据
+ui -> dwd : 评估 / 选址 / 意向
+dwd --> ui : 报告 / 候选点 / 匹配
+@enduml

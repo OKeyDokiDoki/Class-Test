@@ -1,0 +1,144 @@
+// 城市15分钟便民生活圈与小微开店智能助手 · 数据库逻辑模型
+// 版本：V2.0  生成日期：2026年10月
+// 使用方式：打开 https://dbdiagram.io/d ，清空编辑器后粘贴本文件内容即可复现。
+// 表分组与主题域：USR 用户画像 / SIT 空间设施 / RES 居民评估 / MER 商户招商 / COM 社区治理 / OPS 数据运营
+
+// 当前分组：数据运营与同步
+
+Table poi_change_log {
+  id bigint [pk, increment, note: '主键']
+  poi_id bigint [note: '设施']
+  batch_id bigint [not null, note: '同步批次']
+  change_type varchar(20) [not null, note: '变更类型']
+  change_summary varchar(500) [note: '如“地址变更”“营业状态 OPEN→CLOSED”']
+  before_json text [note: 'JSON 快照，便于回滚']
+  after_json text [note: 'JSON 快照']
+  changed_at timestamp [not null, note: '变更时间']
+
+  Note: 'POI 变更日志表：记录新增、变更、关停和清洗无效的 POI 差异，支持增量追溯与数据质量审计。'
+
+  indexes {
+    (poi_id, changed_at) [name: 'idx_poi_log_poi']
+    batch_id [name: 'idx_poi_log_batch']
+  }
+}
+
+Table sync_batch {
+  id bigint [pk, increment, note: '主键']
+  batch_no varchar(40) [not null, unique, note: '如 POI-20261015-01']
+  data_source varchar(20) [not null, note: '数据来源']
+  sync_type varchar(20) [not null, note: '同步类型']
+  started_at timestamp [not null, note: '开始时间']
+  finished_at timestamp [note: '结束时间']
+  total_count int [not null, default: 0, note: '处理总数']
+  insert_count int [not null, default: 0, note: '新增数']
+  update_count int [not null, default: 0, note: '变更数']
+  close_count int [not null, default: 0, note: '关停数']
+  invalid_count int [not null, default: 0, note: '无效数']
+  status varchar(20) [not null, default: 'RUNNING', note: '批次状态']
+  error_msg varchar(1000) [note: '错误信息']
+  created_at timestamp [not null, note: '创建时间']
+
+  Note: '数据同步批次表：每半月一次 POI/人口/路网增量同步的批次台账，记录数量、状态与错误信息。'
+
+  indexes {
+    (status, started_at) [name: 'idx_sync_status_time']
+  }
+}
+
+Table data_quality_issue {
+  id bigint [pk, increment, note: '主键']
+  batch_id bigint [not null, note: '同步批次']
+  poi_id bigint [note: '设施']
+  rule_code varchar(40) [not null, note: '如 DUP_POI、COORD_OUT_OF_RANGE']
+  issue_desc varchar(500) [not null, note: '问题描述']
+  severity varchar(20) [not null, note: '严重程度']
+  is_handled char(1) [not null, default: 'N', note: '是否已处理']
+  handled_at timestamp [note: '处理时间']
+  created_at timestamp [not null, note: '创建时间']
+
+  Note: '数据质量问题表：同步过程中的重复、坐标异常、类别缺失等质量问题及处理状态，支撑数据治理闭环。'
+
+  indexes {
+    (batch_id, severity, is_handled) [name: 'idx_dq_batch_severity']
+  }
+}
+
+Table ods_poi_raw {
+  id bigint [pk, increment, note: '主键']
+  batch_id bigint [not null, note: '同步批次']
+  source varchar(20) [not null, note: '数据来源']
+  source_poi_id varchar(100) [not null, note: '来源 POI 编号']
+  poi_name varchar(200) [note: '设施名称']
+  lng decimal(10,6) [note: '经度']
+  lat decimal(10,6) [note: '纬度']
+  category_raw varchar(100) [note: '原始类别']
+  address varchar(255) [note: '原始地址']
+  raw_json text [not null, note: '接口返回 JSON 原样保存']
+  load_at timestamp [not null, note: '入库时间']
+  process_status varchar(20) [not null, default: 'PENDING', note: '处理状态']
+
+  Note: 'POI 原始数据表：高德/政务 POI 接口原始报文落地，保留原样 JSON，供清洗、重放和审计。'
+
+  indexes {
+    (batch_id, process_status) [name: 'idx_ods_poi_batch']
+    (source, source_poi_id) [name: 'idx_ods_poi_source']
+  }
+}
+
+Table ods_population_raw {
+  id bigint [pk, increment, note: '主键']
+  batch_id bigint [not null, note: '同步批次']
+  grid_code varchar(40) [not null, note: '栅格编码']
+  population int [note: '人口数']
+  density decimal(12,2) [note: '人口密度']
+  data_date date [note: '统计日期']
+  raw_json text [not null, note: '原始报文']
+  load_at timestamp [not null, note: '入库时间']
+  process_status varchar(20) [not null, default: 'PENDING', note: '处理状态']
+
+  Note: '人口栅格原始数据表：人口栅格文件/接口的原始统计值，按批次保留，供复算和口径追溯。'
+
+  indexes {
+    (batch_id, process_status) [name: 'idx_ods_pop_batch']
+  }
+}
+
+Table ods_road_raw {
+  id bigint [pk, increment, note: '主键']
+  batch_id bigint [not null, note: '同步批次']
+  segment_code varchar(50) [note: '路段编码']
+  raw_json text [not null, note: '原始报文']
+  load_at timestamp [not null, note: '入库时间']
+  process_status varchar(20) [not null, default: 'PENDING', note: '处理状态']
+
+  Note: '路网原始数据表：路网数据文件的原始路段记录，保留几何与属性原文，供拓扑重建。'
+
+  indexes {
+    (batch_id, process_status) [name: 'idx_ods_road_batch']
+  }
+}
+
+// 外部引用实体（仅保留主键）
+Table poi_facility {
+  id bigint [pk]
+}
+
+
+// ===== 关系定义（含外部引用） =====
+Ref: poi_change_log.poi_id > poi_facility.id
+Ref: poi_change_log.batch_id > sync_batch.id
+Ref: data_quality_issue.batch_id > sync_batch.id
+Ref: data_quality_issue.poi_id > poi_facility.id
+Ref: ods_poi_raw.batch_id > sync_batch.id
+Ref: ods_population_raw.batch_id > sync_batch.id
+Ref: ods_road_raw.batch_id > sync_batch.id
+
+TableGroup "数据运营与同步" {
+  poi_change_log
+  sync_batch
+  data_quality_issue
+  ods_poi_raw
+  ods_population_raw
+  ods_road_raw
+}

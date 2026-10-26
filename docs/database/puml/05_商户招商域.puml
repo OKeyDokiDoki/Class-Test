@@ -1,0 +1,71 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 13
+skinparam dpi 140
+skinparam nodesep 26
+skinparam ranksep 40
+skinparam ArrowColor #7F7F7F
+skinparam ArrowThickness 1.2
+hide circle
+hide empty methods
+hide empty fields
+skinparam linetype polyline
+
+package "MER · 商户选址与招商" {
+entity "site_candidate\n商户选址候选点表" as site_candidate #F3EAF7 {
+  *id : BIGINT <<PK>>
+  --
+  district_id : BIGINT <<FK>>
+  candidate_name : VARCHAR(100)
+  business_type : VARCHAR(100)
+  population_index : DECIMAL(10,2)
+  competitor_count : INT
+  site_score : INT
+}
+entity "site_score_item\n选址评分明细表" as site_score_item #F3EAF7 {
+  *id : BIGINT <<PK>>
+  --
+  candidate_id : BIGINT <<FK>>
+  score_item : VARCHAR(50)
+  item_score : DECIMAL(5,2)
+  weight : DECIMAL(5,2)
+}
+entity "merchant_intent\n商户开店意向表" as merchant_intent #F3EAF7 {
+  *id : BIGINT <<PK>>
+  --
+  merchant_name : VARCHAR(100)
+  business_type : VARCHAR(100)
+  district_id : BIGINT <<FK>>
+  candidate_id : BIGINT <<FK>>
+  status : VARCHAR(20)
+}
+entity "merchant_match\n招商匹配表" as merchant_match #F3EAF7 {
+  *id : BIGINT <<PK>>
+  --
+  intent_id : BIGINT <<FK>>
+  district_id : BIGINT <<FK>>
+  gap_id : BIGINT <<FK>>
+  fit_score : INT
+  status : VARCHAR(20)
+}
+}
+entity "district\n社区片区表（外部）" as district #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+entity "sync_batch\n数据同步批次表（外部）" as sync_batch #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+entity "community_gap\n社区短板片区表（外部）" as community_gap #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+district ||--o{ site_candidate : "所属片区"
+sync_batch ||--o{ site_candidate : "数据批次"
+site_candidate ||--o{ site_score_item : "候选点"
+district ||--o{ merchant_intent : "意向片区"
+site_candidate ||--o{ merchant_intent : "意向候选点"
+merchant_intent ||--o{ merchant_match : "开店意向"
+district ||--o{ merchant_match : "片区"
+community_gap ||--o{ merchant_match : "对应短板"
+@enduml

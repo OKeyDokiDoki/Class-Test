@@ -1,0 +1,117 @@
+// 城市15分钟便民生活圈与小微开店智能助手 · 数据库逻辑模型
+// 版本：V2.0  生成日期：2026年10月
+// 使用方式：打开 https://dbdiagram.io/d ，清空编辑器后粘贴本文件内容即可复现。
+// 表分组与主题域：USR 用户画像 / SIT 空间设施 / RES 居民评估 / MER 商户招商 / COM 社区治理 / OPS 数据运营
+
+// 当前分组：居民生活圈评估
+
+Table resident_assessment {
+  id bigint [pk, increment, note: '主键']
+  resident_code varchar(64) [not null, note: '脱敏居民编号，未登录用户也可评估']
+  user_id bigint [note: '用户']
+  district_id bigint [not null, note: '目标片区']
+  profile_id bigint [note: '个性化权重来源']
+  batch_id bigint [note: '评估使用的 POI/人口数据版本']
+  radius_m int [not null, default: 1080, note: '米，15 分钟按 1.2 m/s 约 1080 m']
+  total_score int [not null, note: '0-100']
+  profile_label varchar(50) [note: '冗余画像标签，便于列表展示']
+  insight varchar(1000) [note: 'Agent 生成的优缺点诊断']
+  assessed_at timestamp [not null, note: '评估时间']
+
+  Note: '居民生活圈评估表：一次居民生活圈体检的汇总结果，保存评分、画像、步行半径和诊断结论。'
+
+  indexes {
+    (district_id, assessed_at) [name: 'idx_assess_district_time']
+    (user_id, assessed_at) [name: 'idx_assess_user']
+    batch_id [name: 'idx_assess_batch']
+  }
+}
+
+Table assessment_dimension {
+  id bigint [pk, increment, note: '主键']
+  assessment_id bigint [not null, note: '评估记录']
+  dimension_code varchar(30) [not null, note: '维度编码']
+  dimension_name varchar(50) [not null, note: '维度名称']
+  dimension_score int [not null, note: '维度得分']
+  weight decimal(5,2) [not null, note: '来自画像，百分比']
+  facility_count int [not null, default: 0, note: '设施数量']
+
+  Note: '评估维度得分表：五维评分的分项结果，保存得分、权重和设施计数，支撑雷达图与可解释性。'
+
+  indexes {
+    (assessment_id, dimension_code) [unique, name: 'uk_assess_dim']
+  }
+}
+
+Table assessment_facility_stat {
+  id bigint [pk, increment, note: '主键']
+  assessment_id bigint [not null, note: '评估记录']
+  category_id bigint [not null, note: '设施类别']
+  facility_count int [not null, default: 0, note: '设施数量']
+  nearest_distance_m decimal(10,2) [note: '米']
+  status varchar(20) [note: '充足/基本满足/待改善，与前端枚举逐字一致']
+
+  Note: '评估设施盘点表：一次评估中各设施类别的数量、最近距离与状态，用于设施清单和短板定位。'
+
+  indexes {
+    (assessment_id, category_id) [unique, name: 'uk_assess_category']
+  }
+}
+
+Table district_score_snapshot {
+  id bigint [pk, increment, note: '主键']
+  district_id bigint [not null, note: '片区']
+  batch_id bigint [note: '数据批次']
+  coverage_pct int [not null, note: '%，15 分钟覆盖人口占比']
+  avg_score decimal(5,2) [not null, note: '平均评分']
+  rank_no int [note: '辖区排名']
+  resident_count int [note: '覆盖人口']
+  scored_at timestamp [not null, note: '计算时间']
+
+  Note: '片区评分快照表：每次数据同步后按片区重算的便民评分与排名，供社区热力图、排名和趋势查询。'
+
+  indexes {
+    (district_id, batch_id) [unique, name: 'uk_district_batch']
+    scored_at [name: 'idx_district_score_time']
+  }
+}
+
+// 外部引用实体（仅保留主键）
+Table app_user {
+  id bigint [pk]
+}
+
+Table district {
+  id bigint [pk]
+}
+
+Table facility_category {
+  id bigint [pk]
+}
+
+Table sync_batch {
+  id bigint [pk]
+}
+
+Table user_profile {
+  id bigint [pk]
+}
+
+
+// ===== 关系定义（含外部引用） =====
+Ref: resident_assessment.user_id > app_user.id
+Ref: resident_assessment.district_id > district.id
+Ref: resident_assessment.profile_id > user_profile.id
+Ref: resident_assessment.batch_id > sync_batch.id
+Ref: assessment_dimension.assessment_id > resident_assessment.id
+Ref: assessment_facility_stat.assessment_id > resident_assessment.id
+Ref: assessment_facility_stat.category_id > facility_category.id
+Ref: district_score_snapshot.district_id > district.id
+Ref: district_score_snapshot.batch_id > sync_batch.id
+
+TableGroup "居民生活圈评估" {
+  resident_assessment
+  assessment_dimension
+  assessment_facility_stat
+  district_score_snapshot
+}

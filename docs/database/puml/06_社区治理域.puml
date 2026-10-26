@@ -1,0 +1,51 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 13
+skinparam dpi 140
+skinparam nodesep 26
+skinparam ranksep 40
+skinparam ArrowColor #7F7F7F
+skinparam ArrowThickness 1.2
+hide circle
+hide empty methods
+hide empty fields
+skinparam linetype polyline
+
+package "COM · 社区治理" {
+entity "community_gap\n社区短板片区表" as community_gap #E6F4F5 {
+  *id : BIGINT <<PK>>
+  --
+  district_id : BIGINT <<FK>>
+  category_id : BIGINT <<FK>>
+  area_name : VARCHAR(100)
+  issue : VARCHAR(200)
+  gap_level : VARCHAR(10)
+  priority_no : INT
+}
+entity "simulation_record\n网点增设模拟记录表" as simulation_record #E6F4F5 {
+  *id : BIGINT <<PK>>
+  --
+  district_id : BIGINT <<FK>>
+  category_id : BIGINT <<FK>>
+  before_coverage : INT
+  after_coverage : INT
+  benefited_residents : INT
+}
+}
+entity "district\n社区片区表（外部）" as district #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+entity "facility_category\n设施类别字典表（外部）" as facility_category #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+entity "sync_batch\n数据同步批次表（外部）" as sync_batch #F2F2F2 {
+  *id : BIGINT <<PK>>
+}
+district ||--o{ community_gap : "片区"
+facility_category ||--o{ community_gap : "设施类别"
+sync_batch ||--o{ community_gap : "数据批次"
+district ||--o{ simulation_record : "片区"
+facility_category ||--o{ simulation_record : "设施类别"
+@enduml

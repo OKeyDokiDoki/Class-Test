@@ -1,0 +1,103 @@
+// 城市15分钟便民生活圈与小微开店智能助手 · 数据库逻辑模型
+// 版本：V2.0  生成日期：2026年10月
+// 使用方式：打开 https://dbdiagram.io/d ，清空编辑器后粘贴本文件内容即可复现。
+// 表分组与主题域：USR 用户画像 / SIT 空间设施 / RES 居民评估 / MER 商户招商 / COM 社区治理 / OPS 数据运营
+
+// 当前分组：用户与画像
+
+Table app_user {
+  id bigint [pk, increment, note: '自增主键']
+  user_code varchar(64) [not null, unique, note: '脱敏编号，居民 R、商户 M、社区 C 前缀']
+  role_code varchar(20) [not null, default: 'RESIDENT', note: 'RESIDENT 居民 / MERCHANT 商户 / COMMUNITY 社区 / ADMIN 管理员']
+  nickname varchar(50) [note: '展示名称，可为空']
+  phone_hash varchar(64) [unique, note: 'SHA-256 加盐哈希，用于登录匹配，不可逆']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE/DISABLED/DELETED']
+  last_login_at timestamp [note: 'UTC 时间']
+  created_at timestamp [not null, note: '创建时间']
+  updated_at timestamp [not null, note: '更新时间']
+
+  Note: '用户账号表：三类使用者的统一账号，只保存脱敏业务编号与手机号哈希，不落库明文手机号。'
+
+  indexes {
+    (role_code, status) [name: 'idx_app_user_role_status']
+  }
+}
+
+Table user_profile {
+  id bigint [pk, increment, note: '主键']
+  user_id bigint [not null, note: '所属用户']
+  profile_type varchar(20) [not null, note: '居民画像或商户画像']
+  profile_label varchar(50) [not null, note: '如“青年夜班画像”“稳健型商户画像”']
+  source varchar(20) [not null, default: 'FORM', note: '表单/多轮对话/导入']
+  confidence decimal(5,2) [note: '0-100，表示标签可信程度']
+  version_no int [not null, default: 1, note: '从 1 递增']
+  is_current char(1) [not null, default: 'Y', note: 'Y/N，同一用户仅一条 Y']
+  created_at timestamp [not null, note: '创建时间']
+
+  Note: '用户画像表：一次画像生成的版本化结果，保留历史版本，is_current 标记当前生效画像。'
+
+  indexes {
+    (user_id, version_no) [unique, name: 'uk_user_profile_ver']
+    (user_id, is_current) [name: 'idx_user_profile_cur']
+  }
+}
+
+Table profile_tag {
+  id bigint [pk, increment, note: '主键']
+  tag_code varchar(40) [not null, unique, note: '如 NIGHT_MEDICAL、FRESH_FOOD']
+  tag_name varchar(50) [not null, note: '如“夜间就医”']
+  role_scope varchar(20) [not null, default: 'ALL', note: '适用角色范围']
+  dimension_code varchar(30) [not null, note: '关联 FACILITY_DIMENSION 编码']
+  default_weight decimal(5,2) [not null, default: 20, note: '0-100 百分比']
+  status varchar(20) [not null, default: 'ACTIVE', note: '状态']
+  created_at timestamp [not null, note: '创建时间']
+
+  Note: '画像标签字典表：可配置的关注点标签库，按角色与评分维度归类，供画像生成和权重计算使用。'
+
+  indexes {
+    (dimension_code, role_scope) [name: 'idx_profile_tag_dim']
+  }
+}
+
+Table user_profile_tag {
+  id bigint [pk, increment, note: '主键']
+  profile_id bigint [not null, note: '画像']
+  tag_id bigint [not null, note: '标签']
+  weight decimal(5,2) [not null, default: 20, note: '0-100 百分比，参与加权评分']
+  selected_at timestamp [not null, note: '选取时间']
+
+  Note: '用户画像标签明细表：画像与标签的多对多关联，记录用户勾选/对话提取出的标签及个性化权重。'
+
+  indexes {
+    (profile_id, tag_id) [unique, name: 'uk_profile_tag']
+  }
+}
+
+Table profile_dimension_weight {
+  id bigint [pk, increment, note: '主键']
+  profile_id bigint [not null, note: '画像']
+  dimension_code varchar(30) [not null, note: 'FRESH/MEDICAL/EDU/TRAFFIC/NIGHT']
+  dimension_name varchar(50) [not null, note: '生鲜购物/医疗健康/亲子教育/交通通勤/夜间服务']
+  weight decimal(5,2) [not null, note: '0-100 百分比']
+  updated_at timestamp [not null, note: '更新时间']
+
+  Note: '画像维度权重表：画像对五个评分维度的最终权重，居民评估时按该表动态加权，权重之和应为 100。'
+
+  indexes {
+    (profile_id, dimension_code) [unique, name: 'uk_profile_dim']
+  }
+}
+
+// ===== 关系定义（含外部引用） =====
+Ref: user_profile.user_id > app_user.id
+Ref: user_profile_tag.profile_id > user_profile.id
+Ref: user_profile_tag.tag_id > profile_tag.id
+Ref: profile_dimension_weight.profile_id > user_profile.id
+
+TableGroup "用户与画像" {
+  app_user
+  user_profile
+  profile_tag
+  user_profile_tag
+  profile_dimension_weight
+}

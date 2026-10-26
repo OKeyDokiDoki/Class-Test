@@ -1,0 +1,31 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 13
+skinparam dpi 150
+skinparam nodesep 30
+skinparam ranksep 45
+skinparam ArrowColor #5B6B7F
+skinparam ArrowThickness 1.4
+hide stereotype
+
+rectangle "USR · 用户与画像（5 表）\napp_user / user_profile / profile_tag\nuser_profile_tag / profile_dimension_weight" as usr #E8F0FB
+rectangle "SIT · 空间与设施（6 表）\ndistrict / population_grid / road_node\nroad_segment / facility_category / poi_facility" as sit #EAF4EA
+rectangle "RES · 居民生活圈评估（4 表）\nresident_assessment / assessment_dimension\nassessment_facility_stat / district_score_snapshot" as res #FFF2E5
+rectangle "MER · 商户选址与招商（4 表）\nsite_candidate / site_score_item\nmerchant_intent / merchant_match" as mer #F3EAF7
+rectangle "COM · 社区治理（2 表）\ncommunity_gap / simulation_record" as com #E6F4F5
+rectangle "OPS · 数据运营与同步（6 表）\nsync_batch / poi_change_log / data_quality_issue\nods_poi_raw / ods_population_raw / ods_road_raw" as ops #F2F2F2
+
+usr --> res : 画像与维度权重
+sit --> res : POI / 人口 / 路网
+sit --> mer : 人口指数 / 竞争 POI
+sit --> com : 设施覆盖 / 短板
+mer --> com : 意向匹配短板
+res --> com : 评分快照
+ops ..> usr : 数据批次版本
+ops ..> sit : 数据批次版本
+ops ..> res : 数据批次版本
+ops ..> mer : 数据批次版本
+ops ..> com : 数据批次版本
+@enduml

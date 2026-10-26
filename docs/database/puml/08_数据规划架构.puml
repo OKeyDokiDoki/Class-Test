@@ -1,0 +1,25 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 13
+skinparam dpi 150
+skinparam ArrowColor #5B6B7F
+skinparam ArrowThickness 1.5
+skinparam linetype ortho
+hide stereotype
+
+rectangle "**L1 数据源层**\n高德 POI 接口 · 人口栅格 · 城市路网 · 业务表单 / 画像对话" as l1 #F7F9FC
+rectangle "**L2 接入与治理层**\n半月定时调度 · 增量抽取与批次管理 · 质量校验 · 元数据与权限" as l2 #EEF4FB
+rectangle "**L3 ODS 原始层**（TBS_LIFECIRCLE_ODS）\nods_poi_raw · ods_population_raw · ods_road_raw（月分区 + 压缩）" as l3 #FFF8E8
+rectangle "**L4 DWD 明细层**（TBS_LIFECIRCLE_DATA）\n用户画像 5 表 · 空间设施 6 表 · 居民评估 4 表\n商户招商 4 表 · 社区治理 2 表" as l4 #EAF4EA
+rectangle "**L5 ADS 应用层**（快照 + 缓存）\ndistrict_score_snapshot · v_district_dashboard · 评分缓存" as l5 #F3EAF7
+rectangle "**L6 服务与应用层**\n居民评估 API · 商户选址 API · 社区治理 API\nAgent 智能编排 · Vue3 工作台 / ECharts" as l6 #E6F4F5
+
+l1 -down-> l2 : 原始数据
+l2 -down-> l3 : 批次落地
+l3 -down-> l4 : 清洗 / 合并
+l4 -down-> l5 : 指标汇总
+l5 -down-> l6 : 查询 / 写入
+l4 -down-> l6 : 明细查询
+@enduml
