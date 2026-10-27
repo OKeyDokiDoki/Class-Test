@@ -84,14 +84,16 @@ def summarize(text):
 
 def write_outputs(text, target, output, also_backend):
     os.makedirs(os.path.dirname(output), exist_ok=True)
-    with open(output, "w", encoding="utf-8", newline="\n") as f:
+    # 用系统默认换行（Windows 下为 CRLF），与仓库其它生成脚本保持一致，
+    # 避免 git 因为换行符差异把「内容相同」的文件报成已修改。
+    with open(output, "w", encoding="utf-8") as f:
         f.write(text)
     print(f"[ok] {output}")
 
     if also_backend:
         backend_path = os.path.join(BACKEND_DB, os.path.basename(output))
         os.makedirs(BACKEND_DB, exist_ok=True)
-        with open(backend_path, "w", encoding="utf-8", newline="\n") as f:
+        with open(backend_path, "w", encoding="utf-8") as f:
             f.write(text)
         print(f"[ok] {backend_path}")
 
