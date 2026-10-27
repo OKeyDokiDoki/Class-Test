@@ -71,28 +71,30 @@ GET  /api/merchant/intents
 
 ## 物理数据库与持久化演示
 
-物理表由 **dbdiagram.io** 从 DBML 导出的 SQL 创建，不使用手写 DDL，也不使用 Hibernate 自动建表：
+物理表由 **dbdiagram.io** 从 DBML 导出的 SQL 创建，不使用手写 DDL，也不使用 Hibernate 自动建表（`ddl-auto=none`）：
 
 ```text
 docs/database/dbml/class_test_full.dbml
-  → dbdiagram.io / @dbml/cli 导出 SQL
-  → backend/src/main/resources/db/schema-dbml-h2.sql
-  → 首次启动时由 SchemaBootstrapRunner 执行到 H2 文件库
+  → dbdiagram.io / @dbml/cli 导出 Oracle 方言 SQL
+  → backend/src/main/resources/db/schema-dbml-oracle.sql
+  → 首次启动时由 OracleSchemaBootstrapRunner 执行到 Oracle
 ```
 
-`h2file` Profile 使用文件数据库 `backend/data/lifecircle.mv.db`，数据在进程重启后仍然存在：
+默认数据库是 Oracle（`application.yml` 中 `spring.profiles.active=oracle`），连接 `jdbc:oracle:thin:@localhost:1521/FREEPDB1` 的 `life_circle` schema，27 张表、41 个外键；数据在进程重启后仍然存在：
 
 ```powershell
-# 第一次：建 27 张表并写入演示数据
-mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file,demo" `
+# 直接运行：默认即 Oracle
+mvn -f backend/pom.xml spring-boot:run
+
+# 建表 + 写入 27 张表演示数据 + 读回行数验证
+mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=demo" `
   "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
 
-# 第二次：进程重启后只读回行数，验证持久化
-mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file,demo" `
-  "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
+# 无 Oracle 时回退到 H2（内存或文件库）
+mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file"
 ```
 
-后端已提供 27 张表的 JPA 实体与 Repository，已有 `POST/GET /api/merchant/intents` 接口也会写入同一物理库。数据库建模工具到物理建表的完整说明见 [docs/database/tools/README.md](docs/database/tools/README.md)。
+后端已提供 27 张表的 JPA 实体与 Repository，`POST/GET /api/merchant/intents` 接口写入同一物理库，重启后数据仍可查询。数据库建模工具到物理建表的完整说明见 [docs/database/tools/README.md](docs/database/tools/README.md)，验证记录见 [docs/database/sql/10_oracle_persistence_verification.txt](docs/database/sql/10_oracle_persistence_verification.txt)。
 
 ## 已包含的业务骨架
 

@@ -4,15 +4,13 @@ server:
 spring:
   application:
     name: life-circle-backend
-  datasource:
-    url: jdbc:h2:mem:lifecircle;MODE=Oracle;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: update
-  h2:
-    console:
-      enabled: true
+  profiles:
+    # 默认使用 Oracle 作为物理数据库（application-oracle.yml）。
+    # 无 Oracle 环境时可用 -Dspring-boot.run.profiles=h2file 或 h2 回退。
+    active: oracle
+    group:
+      # 只写 demo 时也自动带上 oracle
+      demo: oracle
+
+persistence:
+  schema-script: classpath:db/schema-dbml-oracle.sql
