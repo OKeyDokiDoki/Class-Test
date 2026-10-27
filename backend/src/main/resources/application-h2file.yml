@@ -1,3 +1,8 @@
+# H2 文件库：无 Oracle 环境时的持久化回退，数据落在 backend/data/lifecircle.mv.db
+app:
+  datasource:
+    mode: h2
+
 spring:
   datasource:
     url: jdbc:h2:file:./data/lifecircle;MODE=PostgreSQL;DB_CLOSE_ON_EXIT=FALSE
@@ -5,8 +10,10 @@ spring:
     password:
     driver-class-name: org.h2.Driver
   jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
     open-in-view: false
     hibernate:
+      # 物理表由 dbdiagram.io 导出的脚本创建，禁止 Hibernate 自动建表
       ddl-auto: none
     properties:
       hibernate:

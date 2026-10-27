@@ -90,21 +90,22 @@ H2 文件库链路保留为离线回退：`dbml_export_postgres.sql` → 去掉 
 - `backend/src/main/java/com/lifecircle/config/OracleSchemaBootstrapRunner.java`：Oracle 首次启动执行建表脚本；
 - `backend/src/main/java/com/lifecircle/config/SchemaBootstrapRunner.java`：H2 回退时执行建表脚本；
 - `backend/src/main/java/com/lifecircle/service/PersistenceDemoRunner.java`：向各表写入演示数据并输出行数；
-- `backend/src/main/resources/application-oracle.yml`：Oracle 读写分离 + `ddl-auto=none`；
-- `backend/src/main/resources/application-h2.yml` / `application-h2file.yml`：离线回退配置。
+- `backend/src/main/resources/application.yml`：Oracle 读写分离 + `ddl-auto=none`（`app.datasource.mode=oracle` 为默认）；
+- `backend/src/main/resources/application-h2.yml` / `application-h2file.yml`：离线回退配置（`app.datasource.mode=h2`）。
 
 运行与持久化验证：
 
 ```powershell
-# 默认即 Oracle（application.yml 中 spring.profiles.active=oracle）
+# 默认即 Oracle（application.yml 中 app.datasource.mode=oracle）
 mvn -f backend/pom.xml spring-boot:run
 
-# 建表 + 写入 + 读回（demo 会通过 profile group 自动带上 oracle）
+# 建表 + 写入 + 读回
 mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=demo" `
   "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
 
-# 无 Oracle 环境时回退：h2（内存）或 h2file（文件库）
-mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file"
+# 无 Oracle 环境时回退：h2（内存）或 h2file（文件库），可与 demo 叠加
+mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file,demo" `
+  "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
 ```
 
 实测结果（Oracle AI Database 26ai Free，FREEPDB1）：27 张表由 dbdiagram.io 导出的脚本创建；进程重启后行数不变；`POST /api/merchant/intents` 写入的记录在重启后仍存在。详见 `sql/10_oracle_persistence_verification.txt`。单元测试使用 `backend/src/test/resources/application.yml` 的 H2 内存库，不依赖 Oracle。

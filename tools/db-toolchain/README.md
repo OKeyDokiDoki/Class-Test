@@ -177,9 +177,11 @@ python gen_artifacts.py
 ## 八、约定与注意事项
 
 1. **单一源头**：派生文件不要手改，否则下次生成会覆盖，且 DBML / SQL / 实体三者会不一致。
-2. **禁止 ORM 自动建表**：`application-oracle.yml` 与 `application-h2file.yml` 都设置 `ddl-auto: none`，
-   物理表只能来自建模工具导出的脚本。若让 Hibernate 抢建表，数据库默认值与 CHECK 约束会丢失
-   （本项目曾因此触发 `ORA-01400`）。
+2. **禁止 ORM 自动建表**：`application.yml`（Oracle 默认）、`application-h2.yml`、`application-h2file.yml`
+   都设置 `ddl-auto: none`，物理表只能来自建模工具导出的脚本。若让 Hibernate 抢建表，
+   数据库默认值与 CHECK 约束会丢失（本项目曾因此触发 `ORA-01400`）。
+   数据库选择由 `app.datasource.mode`（oracle/h2）决定，不依赖 profile 名称，
+   因此 `-Dspring-boot.run.profiles=demo` 这类组合不会误连 Oracle。
 3. **标识符大小写**：dbdiagram.io 导出的是带引号的小写标识符（`"app_user"`），
    ORM 侧必须开 `hibernate.globally_quoted_identifiers: true` 才能匹配。
 4. **方言适配是必需步骤**：dbdiagram.io 的 Oracle 导出保留 `bigint` / `text` / `GENERATED AS IDENTITY`

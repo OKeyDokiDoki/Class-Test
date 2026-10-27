@@ -18,7 +18,7 @@ import java.sql.Statement;
  * 表已存在则跳过，保证物理库只在第一次创建。
  */
 @Component
-@Profile("h2file")
+@Profile({"h2file", "h2"})
 @Order(1)
 public class SchemaBootstrapRunner implements CommandLineRunner {
     private final DataSource dataSource;

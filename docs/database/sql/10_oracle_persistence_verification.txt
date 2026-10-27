@@ -24,7 +24,7 @@ DBML：docs/database/dbml/class_test_full.dbml
 
 二、第一次启动（创建物理表 + 写入数据）
 命令：
-  mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=oracle,demo" ^
+  mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=demo" ^
     "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
 
 输出：
@@ -46,7 +46,8 @@ DBML：docs/database/dbml/class_test_full.dbml
 说明接口写入 Oracle 的数据在应用重启后仍然存在。
 
 五、默认配置
-application.yml 中 spring.profiles.active=oracle，直接运行
+application.yml 中 app.datasource.mode=oracle，直接运行
   mvn -f backend/pom.xml spring-boot:run
-即连接 Oracle；无 Oracle 环境时用 -Dspring-boot.run.profiles=h2 或 h2file 回退。
+即连接 Oracle；无 Oracle 环境时用 -Dspring-boot.run.profiles=h2 或 h2file 回退，
+两者可与 demo 叠加（如 h2file,demo），数据库选择由 app.datasource.mode 决定，不依赖 profile 名称。
 单元测试使用 backend/src/test/resources/application.yml 的 H2 内存库，不依赖 Oracle。

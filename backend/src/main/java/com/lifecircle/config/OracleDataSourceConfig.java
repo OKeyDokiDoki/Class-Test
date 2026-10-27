@@ -2,19 +2,27 @@ package com.lifecircle.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
 
 import javax.sql.DataSource;
 import java.util.Map;
 
+/**
+ * Oracle 读写分离数据源。
+ *
+ * 由配置项 app.datasource.mode 控制是否生效（默认 oracle）：
+ *   oracle  -> 使用主库/只读库路由数据源（当前配置）
+ *   h2/h2file -> 不生效，改用 profile 里的 H2 数据源
+ * 这样不依赖 profile 名称，-Dspring-boot.run.profiles=demo 之类的组合不会误连 Oracle。
+ */
 @Configuration
-@Profile("oracle")
+@ConditionalOnProperty(prefix = "app.datasource", name = "mode", havingValue = "oracle", matchIfMissing = true)
 public class OracleDataSourceConfig {
     @Bean
     @ConfigurationProperties("app.datasource.master")

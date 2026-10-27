@@ -1,10 +1,16 @@
+# 单元测试专用：H2 内存库，不依赖 Oracle；Hibernate 自动建表（测试不校验物理 DDL）
+app:
+  datasource:
+    mode: h2
+
 spring:
   datasource:
-    url: jdbc:h2:mem:lifecircle-test;MODE=Oracle;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:lifecircle-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
     username: sa
     password:
     driver-class-name: org.h2.Driver
   jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
     open-in-view: false
     hibernate:
       ddl-auto: update

@@ -410,7 +410,7 @@ import java.sql.Statement;
  * 表已存在则跳过，保证物理库只在第一次创建。
  */
 @Component
-@Profile("h2file")
+@Profile({"h2file", "h2"})
 @Order(1)
 public class SchemaBootstrapRunner implements CommandLineRunner {
     private final DataSource dataSource;
@@ -452,7 +452,7 @@ def gen_oracle_bootstrap():
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
@@ -466,9 +466,10 @@ import java.sql.Statement;
 /**
  * Oracle 首次启动时执行 dbdiagram.io DBML 导出的 Oracle 建表脚本。
  * 表已存在则跳过，避免覆盖已有数据。
+ * 由 app.datasource.mode=oracle（默认）控制是否生效，不依赖 profile 名称。
  */
 @Component
-@Profile("oracle")
+@ConditionalOnProperty(prefix = "app.datasource", name = "mode", havingValue = "oracle", matchIfMissing = true)
 @Order(1)
 public class OracleSchemaBootstrapRunner implements CommandLineRunner {
     private final DataSource dataSource;
@@ -511,15 +512,22 @@ def main():
     open(os.path.join(SERVICE, "PersistenceDemoRunner.java"), "w", encoding="utf-8").write(gen_runner())
     open(os.path.join(CONFIG, "SchemaBootstrapRunner.java"), "w", encoding="utf-8").write(gen_bootstrap())
     open(os.path.join(CONFIG, "OracleSchemaBootstrapRunner.java"), "w", encoding="utf-8").write(gen_oracle_bootstrap())
-    yml = """spring:
+    yml = """# H2 文件库：无 Oracle 环境时的持久化回退，数据落在 backend/data/lifecircle.mv.db
+app:
+  datasource:
+    mode: h2
+
+spring:
   datasource:
     url: jdbc:h2:file:./data/lifecircle;MODE=PostgreSQL;DB_CLOSE_ON_EXIT=FALSE
     username: sa
     password:
     driver-class-name: org.h2.Driver
   jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
     open-in-view: false
     hibernate:
+      # 物理表由 dbdiagram.io 导出的脚本创建，禁止 Hibernate 自动建表
       ddl-auto: none
     properties:
       hibernate:

@@ -44,7 +44,7 @@ mvn spring-boot:run
 
 ### Oracle 读写分离
 
-`oracle` Profile 下，普通事务连接主库，只读事务连接只读库：
+默认配置（`app.datasource.mode=oracle`）下，普通事务连接主库，只读事务连接只读库：
 
 ```powershell
 $env:ORACLE_MASTER_URL="jdbc:oracle:thin:@192.168.1.101:1521/FREEPDB1"
@@ -53,7 +53,7 @@ $env:ORACLE_MASTER_PASSWORD="life_circle"
 $env:ORACLE_REPLICA_URL="jdbc:oracle:thin:@192.168.1.102:1521/FREEPDB1"
 $env:ORACLE_REPLICA_USERNAME="life_circle_readonly"
 $env:ORACLE_REPLICA_PASSWORD="life_circle_readonly"
-mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=oracle"
+mvn -f backend/pom.xml spring-boot:run
 ```
 
 - `@Transactional` 写入主库。
@@ -80,7 +80,7 @@ docs/database/dbml/class_test_full.dbml
   → 首次启动时由 OracleSchemaBootstrapRunner 执行到 Oracle
 ```
 
-默认数据库是 Oracle（`application.yml` 中 `spring.profiles.active=oracle`），连接 `jdbc:oracle:thin:@localhost:1521/FREEPDB1` 的 `life_circle` schema，27 张表、41 个外键；数据在进程重启后仍然存在：
+默认数据库是 Oracle（`application.yml` 中 `app.datasource.mode=oracle`），连接 `jdbc:oracle:thin:@localhost:1521/FREEPDB1` 的 `life_circle` schema，27 张表、41 个外键；数据在进程重启后仍然存在：
 
 ```powershell
 # 直接运行：默认即 Oracle
@@ -90,8 +90,9 @@ mvn -f backend/pom.xml spring-boot:run
 mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=demo" `
   "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
 
-# 无 Oracle 时回退到 H2（内存或文件库）
-mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file"
+# 无 Oracle 时回退到 H2（h2=内存库，h2file=文件库），可叠加 demo 一起验证
+mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file,demo" `
+  "-Dspring-boot.run.arguments=--spring.main.web-application-type=none --persistence.exit-after-demo=true"
 ```
 
 后端已提供 27 张表的 JPA 实体与 Repository，`POST/GET /api/merchant/intents` 接口写入同一物理库，重启后数据仍可查询。数据库建模工具到物理建表的完整说明见 [docs/database/tools/README.md](docs/database/tools/README.md)，验证记录见 [docs/database/sql/10_oracle_persistence_verification.txt](docs/database/sql/10_oracle_persistence_verification.txt)。

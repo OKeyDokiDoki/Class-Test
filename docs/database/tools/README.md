@@ -57,7 +57,7 @@ dbdiagram.io 的 Oracle 导出保留 DBML 通用类型，落到 Oracle 前做一
 
 - 表由 `OracleSchemaBootstrapRunner` 在首次启动时执行 dbdiagram.io 导出的脚本创建；
 - `spring.jpa.hibernate.ddl-auto=none`，Hibernate 不参与建表；
-- 应用默认 profile 即 `oracle`（`application.yml` 中 `spring.profiles.active=oracle`）。
+- 应用默认连接 Oracle（`application.yml` 中 `app.datasource.mode=oracle`，由 `OracleDataSourceConfig` 生效）。
 
 没有 Oracle 环境时可用 H2 回退：
 
