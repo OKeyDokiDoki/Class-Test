@@ -45,14 +45,14 @@ class LocalFileApiTests {
     }
     @Test void uploadListAndDownloadEndpointsWork() throws Exception {
         var service = new LocalFileService(directory.toString());
-        var mvc = MockMvcBuilders.standaloneSetup(new LocalFileController(service))
+        var mvc = MockMvcBuilders.standaloneSetup(new LocalFileController(service, new ChunkUploadService(directory.toString(), service)))
             .setControllerAdvice(new LocalFileExceptionHandler()).build();
         byte[] data = new byte[]{1,2,3,4};
         mvc.perform(multipart("/api/files/upload").file(new MockMultipartFile("file", "api.bin", "application/octet-stream", data)))
             .andExpect(status().isOk());
         mvc.perform(get("/api/files")).andExpect(status().isOk());
-        mvc.perform(get("/api/files/"+service.list().get(0).id()+"/download"))
-            .andExpect(status().isOk()).andExpect(content().bytes(data));
+        var download = mvc.perform(get("/api/files/"+service.list().get(0).id()+"/download")).andReturn();
+        mvc.perform(asyncDispatch(download)).andExpect(status().isOk()).andExpect(content().bytes(data));
         mvc.perform(get("/api/files/"+java.util.UUID.randomUUID()+"/download"))
             .andExpect(status().isNotFound());
     }

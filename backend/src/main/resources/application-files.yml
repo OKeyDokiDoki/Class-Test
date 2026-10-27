@@ -1,9 +1,12 @@
 spring:
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
+      max-file-size: 8MB
+      max-request-size: 72MB
       file-size-threshold: 0
+  mvc:
+    async:
+      request-timeout: 1800000
 storage:
   local:
     root: ${FILE_STORAGE_ROOT:./data/files}
