@@ -2,6 +2,9 @@
 
 本项目使用 **dbdiagram.io** 作为辅助数据建模工具：物理建表脚本不是手写的，而是由 dbdiagram.io 的 DBML（`docs/database/dbml/class_test_full.dbml`）导出生成，再执行到物理数据库中。
 
+> 本文档说明「链路怎么走」；**生成这些产物的脚本**在 [`tools/db-toolchain/`](../../../tools/db-toolchain/README.md)，
+> 包含唯一源头 `db_model.py`、产物生成器、方言适配器和后端代码生成器，执行步骤见该目录的 README。
+
 ## 一、建模与导出链路
 
 ```text

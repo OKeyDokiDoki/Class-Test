@@ -11,3 +11,6 @@ target/
 data/
 *.mv.db
 *.trace.db
+# 数据库设计工具链的临时文件与字节码缓存
+tools/db-toolchain/.tmp/
+tools/db-toolchain/__pycache__/

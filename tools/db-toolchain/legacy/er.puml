@@ -1,0 +1,93 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam dpi 150
+skinparam ArrowColor #7F7F7F
+skinparam ArrowThickness 1.3
+skinparam entity {
+  BackgroundColor #FFFFFF
+  BorderColor #2F5597
+  FontColor #1F3864
+  FontSize 17
+}
+skinparam classAttributeFontSize 14
+hide circle
+hide empty methods
+hide empty fields
+
+entity "district\n社区片区" as district {
+  *id : BIGINT <<PK>>
+  --
+  district_name : VARCHAR(100)
+  city_code : VARCHAR(20)
+  center_lng / center_lat : DECIMAL(10,6)
+  resident_count : INT
+}
+
+entity "poi_facility\n设施网点" as poi_facility {
+  *id : BIGINT <<PK>>
+  --
+  district_id : BIGINT <<FK>>
+  poi_name : VARCHAR(200)
+  category : VARCHAR(50)
+  facility_status : VARCHAR(20)
+}
+
+entity "resident_assessment\n居民生活圈评估" as resident_assessment {
+  *id : BIGINT <<PK>>
+  --
+  resident_code : VARCHAR(64)
+  district_id : BIGINT <<FK>>
+  total_score : INT
+  assessed_at : TIMESTAMP
+}
+
+entity "assessment_dimension\n评估维度得分" as assessment_dimension {
+  *id : BIGINT <<PK>>
+  --
+  assessment_id : BIGINT <<FK>>
+  dimension_name : VARCHAR(50)
+  dimension_score : INT
+}
+
+entity "site_candidate\n商户选址候选点" as site_candidate {
+  *id : BIGINT <<PK>>
+  --
+  district_id : BIGINT <<FK>>
+  candidate_name : VARCHAR(100)
+  site_score : INT
+}
+
+entity "community_gap\n社区短板片区" as community_gap {
+  *id : BIGINT <<PK>>
+  --
+  district_id : BIGINT <<FK>>
+  area_name : VARCHAR(100)
+  gap_level : VARCHAR(10)
+}
+
+entity "simulation_record\n网点增设模拟" as simulation_record {
+  *id : BIGINT <<PK>>
+  --
+  district_id : BIGINT <<FK>>
+  business_type : VARCHAR(100)
+  before/after_coverage : INT
+}
+
+entity "merchant_intent\n商户开店意向（已实现）" as merchant_intent #FDEEE2 {
+  *id : BIGINT <<PK>>
+  --
+  merchant_name : VARCHAR(100)
+  business_type : VARCHAR(100)
+  contact : VARCHAR(100)
+  created_at : TIMESTAMP
+}
+
+district ||--o{ poi_facility
+district ||--o{ resident_assessment
+district ||--o{ site_candidate
+district ||--o{ community_gap
+district ||--o{ simulation_record
+resident_assessment ||--o{ assessment_dimension
+@enduml

@@ -114,3 +114,5 @@ mvn -f backend/pom.xml spring-boot:run "-Dspring-boot.run.profiles=h2file"
 数据项约定规范见 [docs/DATA_CONVENTIONS.md](docs/DATA_CONVENTIONS.md)。
 
 数据库设计（数据项、dbdiagram.io 模型、数据规划架构、建表脚本与存储规划）见 [docs/database/README.md](docs/database/README.md)。
+
+数据库设计工具链（唯一源头模型、产物生成、方言适配、后端代码生成）见 [tools/db-toolchain/README.md](tools/db-toolchain/README.md)。

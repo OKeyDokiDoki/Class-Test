@@ -13,7 +13,7 @@
 | POI 分析 | 后端演示数据 | 高德 Web 服务或开放数据 |
 | 人口栅格 | 候选点人口指数 | 政务开放数据或栅格文件 |
 | 智能建议 | 规则模板 | LangChain4j + 大模型 API |
-| 数据库 | H2 内存数据库 | Oracle Free 或正式 Oracle |
+| 数据库 | Oracle Free（默认物理库，27 张表由 dbdiagram.io 导出建表；H2 仅作离线回退与测试） | 正式 Oracle |
 
 ## 前端页面
 
