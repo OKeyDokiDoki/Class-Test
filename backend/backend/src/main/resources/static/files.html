@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>文件存取 · 第一阶段</title>
+<style>body{max-width:900px;margin:40px auto;padding:0 20px;font:16px/1.7 system-ui;color:#263c34;background:#f4f7f5}section{background:white;padding:24px;border-radius:12px;margin:20px 0}button{padding:10px 18px;background:#16795a;border:0;border-radius:5px;color:white;cursor:pointer}table{width:100%;border-collapse:collapse}td,th{padding:12px;text-align:left;border-bottom:1px solid #ddd;word-break:break-all}small{color:#65766d}a{color:#16795a}#message{white-space:pre-wrap}</style>
+<h1>文件上传、查询与下载</h1>
+<p>第一阶段：本地持久化存储，单文件最大 5 MiB。</p>
+<section><input id="file" type="file"><button id="upload">上传文件</button><p id="message" role="status">选择文件后点击上传。</p></section>
+<section><h2>已存储文件</h2><button id="refresh">刷新列表</button><table><thead><tr><th>文件名</th><th>大小</th><th>操作</th></tr></thead><tbody id="list"></tbody></table></section>
+<small>后续阶段：大文件分片合并、云 OSS / S3 存储、小文件批量读写。</small>
+<script>
+const get = id => document.getElementById(id);
+async function request(path, options) {
+  const response = await fetch('/api/files' + path, options);
+  const value = await response.json();
+  if (!response.ok) throw new Error(value.message || '请求失败');
+  return value.data;
+}
+async function refresh() {
+  const files = await request(''); get('list').replaceChildren();
+  for (const file of files) {
+    const row = document.createElement('tr');
+    const name = document.createElement('td'); name.textContent = file.name; name.title = 'SHA-256: ' + file.sha256;
+    const size = document.createElement('td'); size.textContent = (file.size / 1024).toFixed(1) + ' KiB';
+    const operation = document.createElement('td'), link = document.createElement('a');
+    link.href = '/api/files/' + file.id + '/download'; link.textContent = '下载'; operation.append(link);
+    row.append(name, size, operation); get('list').append(row);
+  }
+}
+get('upload').onclick = async () => {
+  const file = get('file').files[0];
+  if (!file) { get('message').textContent = '请先选择文件。'; return; }
+  if (file.size > 5 * 1024 * 1024) { get('message').textContent = '当前阶段支持最大 5 MiB 的文件。'; return; }
+  get('upload').disabled = true; get('message').textContent = '上传中…';
+  try {
+    const data = new FormData(); data.append('file', file);
+    const result = await request('/upload', { method: 'POST', body: data });
+    get('message').textContent = '上传成功\n文件 ID：' + result.id + '\nSHA-256：' + result.sha256;
+    await refresh();
+  } catch (e) { get('message').textContent = '失败：' + e.message; }
+  finally { get('upload').disabled = false; }
+};
+get('refresh').onclick = () => refresh().catch(e => get('message').textContent = e.message);
+refresh().catch(e => get('message').textContent = '服务未就绪：' + e.message);
+</script></html>

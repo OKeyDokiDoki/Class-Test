@@ -1,0 +1,9 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+      file-size-threshold: 0
+storage:
+  local:
+    root: ${FILE_STORAGE_ROOT:./data/files}
