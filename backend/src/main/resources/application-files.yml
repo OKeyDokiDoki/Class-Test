@@ -8,5 +8,7 @@ spring:
     async:
       request-timeout: 1800000
 storage:
+  download:
+    max-concurrent: ${FILE_DOWNLOAD_CONCURRENCY:32}
   local:
     root: ${FILE_STORAGE_ROOT:./data/files}

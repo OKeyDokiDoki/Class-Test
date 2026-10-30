@@ -7,6 +7,7 @@ target/
 *.iml
 *.log
 .DS_Store
+file-transfer-results/
 # H2 文件数据库：物理数据文件不入库
 data/
 *.mv.db

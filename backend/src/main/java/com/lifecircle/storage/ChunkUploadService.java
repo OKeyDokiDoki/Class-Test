@@ -70,19 +70,24 @@ public class ChunkUploadService {
             if (expectedHash == null || !expectedHash.matches("(?i)[0-9a-f]{64}"))
                 throw LocalFileService.bad("Each chunk requires a SHA-256 checksum");
             long size = Math.min(s.chunkSize(), s.size()-(long)index*s.chunkSize());
-            if (file.getSize() != size) throw LocalFileService.bad("Chunk size mismatch");
+            if (file.getSize() != size) throw checksumFailure(index, "Chunk size mismatch; resend this chunk");
             Path temp = Files.createTempFile(dir(id), "chunk-", ".tmp");
             try {
                 try (InputStream in = file.getInputStream(); OutputStream out = Files.newOutputStream(temp)) {
                     LocalFileService.copyLimited(in, out, size);
                 }
-                if (Files.size(temp) != size) throw LocalFileService.bad("Incomplete chunk");
+                if (Files.size(temp) != size) throw checksumFailure(index, "Incomplete chunk; resend this chunk");
                 String hash = LocalFileService.hash(temp);
-                if (!hash.equalsIgnoreCase(expectedHash)) throw LocalFileService.bad("Chunk SHA-256 mismatch");
+                if (!hash.equalsIgnoreCase(expectedHash)) throw checksumFailure(index, "Chunk SHA-256 mismatch; resend this chunk");
                 Path part = dir(id).resolve(index+".part"), hashFile = dir(id).resolve(index+".sha256");
                 if (Files.exists(part)) {
-                    if (!hash.equals(LocalFileService.hash(part)))
-                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Chunk retry has different bytes");
+                    if (!hash.equals(LocalFileService.hash(part))) {
+                        // The committed checksum identifies the original content. A corrupt disk part
+                        // can be repaired, but an intact part cannot be replaced with different bytes.
+                        if (Files.exists(hashFile) && hash.equals(Files.readString(hashFile).trim()))
+                            LocalFileService.move(temp, part);
+                        else throw new ResponseStatusException(HttpStatus.CONFLICT, "Chunk retry has different bytes");
+                    }
                 } else { LocalFileService.move(temp, part); }
                 // Publish hash after bytes; an interrupted write is safe to retry.
                 Path hashTemp = Files.createTempFile(dir(id), "checksum-", ".tmp");
@@ -95,10 +100,19 @@ public class ChunkUploadService {
         synchronized (lock(id)) {
             if (files.exists(id)) return files.info(id); // idempotent after a lost response or restart
             Session s = session(id);
+            List<Integer> repair = new ArrayList<>();
             for (int i=0;i<s.totalChunks();i++) {
-                if (!Files.exists(dir(id).resolve(i+".part")) || !Files.exists(dir(id).resolve(i+".sha256")))
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Missing chunk " + i);
+                Path part = dir(id).resolve(i+".part"), checksum = dir(id).resolve(i+".sha256");
+                long expectedSize = Math.min(s.chunkSize(), s.size()-(long)i*s.chunkSize());
+                if (!Files.exists(part) || !Files.exists(checksum)
+                    || Files.size(part) != expectedSize || !LocalFileService.hash(part).equals(Files.readString(checksum).trim())) {
+                    // Invalidate both markers before asking for repair, so status no longer says
+                    // this part is uploaded and a retry is allowed to replace damaged bytes.
+                    Files.deleteIfExists(part); Files.deleteIfExists(checksum); repair.add(i);
+                }
             }
+            if (!repair.isEmpty()) throw new ChunkRepairException(HttpStatus.CONFLICT, "CHUNK_REPAIR_REQUIRED",
+                "Missing or damaged chunks; retransmit the listed indexes", repair);
             Path assembled = dir(id).resolve("assembled.tmp");
             var digest = LocalFileService.digest();
             try {
@@ -106,8 +120,6 @@ public class ChunkUploadService {
                     for (int i=0;i<s.totalChunks();i++) {
                         Path part = dir(id).resolve(i+".part");
                         long expectedSize = Math.min(s.chunkSize(), s.size()-(long)i*s.chunkSize());
-                        if (Files.size(part) != expectedSize || !LocalFileService.hash(part).equals(Files.readString(dir(id).resolve(i+".sha256")).trim()))
-                            throw LocalFileService.bad("Stored chunk is corrupt: " + i);
                         try (InputStream in = Files.newInputStream(part)) { LocalFileService.copyExactly(in,out,expectedSize); }
                     }
                 }
@@ -119,6 +131,9 @@ public class ChunkUploadService {
                 return result;
             } finally { Files.deleteIfExists(assembled); }
         }
+    }
+    private static ChunkRepairException checksumFailure(int index, String message) {
+        return new ChunkRepairException(HttpStatus.UNPROCESSABLE_ENTITY, "CHUNK_CHECKSUM_MISMATCH", message, List.of(index));
     }
     public void cancel(String id) throws IOException {
         synchronized (lock(id)) {

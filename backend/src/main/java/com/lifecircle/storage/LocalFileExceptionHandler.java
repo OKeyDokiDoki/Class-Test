@@ -14,6 +14,16 @@ import java.io.IOException;
 @Order(-10)
 @RestControllerAdvice(assignableTypes = LocalFileController.class)
 public class LocalFileExceptionHandler {
+    @ExceptionHandler(ChunkRepairException.class)
+    public ResponseEntity<Result<java.util.Map<String,Object>>> repair(ChunkRepairException e) {
+        return ResponseEntity.status(e.getStatusCode()).body(new Result<>(e.code(), e.getReason(),
+            java.util.Map.of("indexes", e.indexes(), "retryable", true)));
+    }
+    @ExceptionHandler(org.springframework.core.task.TaskRejectedException.class)
+    public ResponseEntity<Result<Void>> busy(org.springframework.core.task.TaskRejectedException e) {
+        return ResponseEntity.status(503).header("Retry-After", "2")
+            .body(Result.fail("DOWNLOAD_BUSY", "Download workers are busy; retry later"));
+    }
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Result<Void>> status(ResponseStatusException e) {
         return ResponseEntity.status(e.getStatusCode()).body(Result.fail("FILE_ERROR", e.getReason()));

@@ -15,10 +15,12 @@ import java.util.zip.*;
 public class LocalFileController {
     private final LocalFileService service;
     private final ChunkUploadService chunks;
+    @org.springframework.beans.factory.annotation.Autowired private DownloadCapacity downloadCapacity;
     public LocalFileController(LocalFileService service, ChunkUploadService chunks) { this.service=service; this.chunks=chunks; }
     @PostMapping("/upload") public Result<LocalFileService.FileInfo> upload(@RequestParam("file") MultipartFile file) throws IOException { return Result.ok(service.upload(file)); }
     @GetMapping public Result<List<LocalFileService.FileInfo>> list() throws IOException { return Result.ok(service.list()); }
     @GetMapping("/config") public Result<Map<String,Object>> config() { return Result.ok(Map.of("mode",service.mode(),"chunkSize",5*1024*1024,"maxFileSize",ChunkUploadService.MAX_SIZE)); }
+    @GetMapping("/download-stats") public Result<Map<String,Object>> downloadStats() { return Result.ok(downloadCapacity.snapshot()); }
     @PostMapping("/uploads") public Result<ChunkUploadService.Session> init(@RequestBody ChunkUploadService.Init request) throws IOException { return Result.ok(chunks.init(request)); }
     @GetMapping("/uploads/{id}") public Result<ChunkUploadService.Status> status(@PathVariable("id") String id) throws IOException { return Result.ok(chunks.status(id)); }
     @PutMapping("/uploads/{id}/chunks/{index}") public Result<Void> chunk(@PathVariable("id") String id, @PathVariable("index") int index,
@@ -39,13 +41,17 @@ public class LocalFileController {
         } catch(IllegalArgumentException e) { throw new IllegalArgumentException("Unsatisfiable range"); }
     }
     @GetMapping("/{id}/download") public ResponseEntity<StreamingResponseBody> download(@PathVariable("id") String id,
-            @RequestHeader(value="Range",required=false) String header) throws IOException {
+            @RequestHeader(value="Range",required=false) String header,
+            @RequestHeader(value="If-Range",required=false) String ifRange) throws IOException {
         var info=service.info(id); Range range;
+        String etag="\""+info.sha256()+"\"";
+        // If-Range must match the strong ETag; otherwise return the whole current file (200).
+        if (ifRange != null && !ifRange.equals(etag)) header=null;
         try { range=range(header,info.size()); }
         catch(IllegalArgumentException e) { return ResponseEntity.status(416).header(HttpHeaders.CONTENT_RANGE,"bytes */"+info.size()).build(); }
         StreamingResponseBody body=out->{try(InputStream in=service.open(id,range.start(),range.length())){LocalFileService.copyExactly(in,out,range.length());}};
         var response=ResponseEntity.status(range.partial()?206:200).contentType(MediaType.APPLICATION_OCTET_STREAM).contentLength(range.length())
-            .header(HttpHeaders.ACCEPT_RANGES,"bytes").header(HttpHeaders.ETAG,"\""+info.sha256()+"\"")
+            .header(HttpHeaders.ACCEPT_RANGES,"bytes").header(HttpHeaders.ETAG,etag)
             .header(HttpHeaders.CONTENT_DISPOSITION,ContentDisposition.attachment().filename(info.name(),StandardCharsets.UTF_8).build().toString());
         if(range.partial())response.header(HttpHeaders.CONTENT_RANGE,"bytes "+range.start()+"-"+(range.start()+range.length()-1)+"/"+info.size());
         return response.body(body);

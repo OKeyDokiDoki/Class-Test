@@ -1,0 +1,69 @@
+{
+  "status": "PASS",
+  "runtime": "3.14.5",
+  "os": "Windows",
+  "checks": [
+    "damaged transmission returns 422 and exact repair index",
+    "completion reports missing indexes; healthy chunks retained",
+    "out-of-order chunks repaired and merged with full SHA-256; idempotent completion",
+    "interrupted download resumes with Range/If-Range and byte-identical SHA-256",
+    "changed If-Range returns 200; invalid offset returns 416",
+    "small-file batch upload and streamed ZIP retain all content",
+    "20 concurrent full downloads; every SHA-256 matches",
+    "capacity limit rejects excess with 429 and Retry-After",
+    "disconnects release all active download slots"
+  ],
+  "concurrent": {
+    "clients": 20,
+    "success": 20,
+    "bytesPerFile": 67108864,
+    "observedPeakActive": 20,
+    "wallSeconds": 1.638,
+    "aggregateMiBPerSecond": 781.46,
+    "p95Seconds": 1.615,
+    "allSha256Match": true
+  },
+  "finalStats": {
+    "peakActive": 32,
+    "failed": 35,
+    "maxConcurrent": 32,
+    "active": 0,
+    "completed": 22,
+    "rejected": 1
+  },
+  "fileBytes": 67108864,
+  "fileId": "853f8b83-b61c-4763-b19b-3d2b17de674d",
+  "sha256": "a177d975313c0b0c565935d36af36baeec6348c4d78d946b5a673607761c2b60",
+  "resumeOffset": 2097275,
+  "server": {
+    "springBoot": "3.3.5",
+    "javaRuntime": "26.0.2.1",
+    "compileRelease": 17,
+    "heapLimitMiB": 256,
+    "transport": "localhost HTTP"
+  },
+  "fileUnitTests": {
+    "tests": 17,
+    "failures": 0,
+    "errors": 0,
+    "mavenResult": "BUILD SUCCESS"
+  },
+  "fullRepositoryTests": {
+    "tests": 22,
+    "failures": 1,
+    "preexistingBaselineReproduced": true,
+    "failingTest": "MerchantIntentApiTests.createsAndReadsMerchantIntent",
+    "reason": "merchant_intent.STATUS NOT NULL; expected 201, received 500"
+  },
+  "browser": {
+    "uploadPauseRefreshResume": true,
+    "corruptTransmissionAutoRetry": true,
+    "downloadPauseRefreshResume": true,
+    "savedDownloadOffset": 4529708,
+    "restoredPercent": 6.749790906906128,
+    "resumeHttpStatus": 206,
+    "downloadSha256": "a177d975313c0b0c565935d36af36baeec6348c4d78d946b5a673607761c2b60",
+    "server": "Spring Boot 3.3.5",
+    "fileHandleTest": "Chromium origin-private file handle; OS save dialog not automated"
+  }
+}
